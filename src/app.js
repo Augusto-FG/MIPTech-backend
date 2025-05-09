@@ -4,6 +4,7 @@ const fileUpload = require('express-fileupload');
 const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constans/index.js");
 const authRoutes = require('./routes/authRoutes.js'); 
+const userRoutes = require('./routes/userRoutes.js');
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(fileUpload({
 
 
 app.use( authRoutes);
+app.use(userRoutes); 
 
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
