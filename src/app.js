@@ -15,6 +15,7 @@ app.use(fileUpload({
   tempFileDir: '/tmp/',
 }));
 
+
 app.use( authRoutes);
 
 connectToDatabase().then(() => {
