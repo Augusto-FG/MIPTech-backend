@@ -3,6 +3,8 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constans/index.js");
+const authRoutes = require('./routes/authRoutes.js'); 
+
 const app = express();
 
 // middlewares
@@ -14,6 +16,8 @@ app.use(fileUpload({
 }));
 
 
+app.use( authRoutes);
+
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
@@ -21,7 +25,7 @@ connectToDatabase().then(() => {
      ╔════════════════════════════════════╗
      ║ 🚀 Welcome to MIPTech backend!     ║ 
      ╚════════════════════════════════════╝
-      `);
+    `);
   });
 });
 
