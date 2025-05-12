@@ -1,6 +1,6 @@
 const UserModel = require('../models/userModel');
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require("../constans/index.js");
+const { JWT_SECRET } = require("../constants/index.js");
 
 exports.getAllUsers = async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET } = require("../constans/index.js");
+const { JWT_SECRET } = require("../constants/index.js");
 
 exports.validateJwt = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
