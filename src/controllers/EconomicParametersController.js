@@ -34,8 +34,14 @@ exports.calculateParameters = (req, res) => {
 //multiplica por 10000 para obtener la superficie por hectárea y por 1000 para pasarlo a cm cuadrados.
   const deffoliationPercentage = pestConsumption/surface;
   const pestFactor = deffoliationPercentage * 24.8;
-  const nde = treatmentCost / (soybeanValue * pestFactor * treatmentEfficiency);
-  const ude = nde * (percentageForUDE/100)
+  let nde = treatmentCost / (soybeanValue * pestFactor * treatmentEfficiency);
+  let ude = nde * (percentageForUDE/100);
+  //esto esta calculado en insectos / ha. Los ingenieros agrónomos consumen esta info en metro lineal. Vamos a cambiarlo. 
+  rowSpacing = rowSpacing/1000;
+//para pasar de cm a m
+  linearMeters = 100000/rowSpacing;
+  nde = nde / rowSpacing;
+  ude = ude / rowSpacing;
   
   
   
