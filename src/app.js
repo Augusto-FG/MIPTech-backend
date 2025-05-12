@@ -5,6 +5,8 @@ const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constans/index.js");
 const authRoutes = require('./routes/authRoutes.js'); 
 const userRoutes = require('./routes/userRoutes.js');
+const calculateParametersRoutes = require('./routes/calculateParameters.routes');
+
 
 const app = express();
 
@@ -19,6 +21,7 @@ app.use(fileUpload({
 
 app.use( authRoutes);
 app.use(userRoutes); 
+app.use('/api/v1/calculate-parameters', calculateParametersRoutes);
 
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
