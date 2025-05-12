@@ -5,7 +5,7 @@ const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constans/index.js");
 const authRoutes = require('./routes/authRoutes.js'); 
 const userRoutes = require('./routes/userRoutes.js');
-const calculateParametersRoutes = require('./routes/calculateParametersRoutes');
+const calculateParametersRoutes = require('./routes/calculateParametersRoutes.js');
 
 
 const app = express();
