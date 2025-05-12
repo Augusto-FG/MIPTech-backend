@@ -25,8 +25,8 @@ exports.calculateParameters = (req, res) => {
   "R2": 6.3,
   "R3": 6.0,
   "R4": 6.3,
-  "R5": 7.8,
-  "R6": 7.8,
+  "R5": 7,
+  "R6": 7,
   "R8": 2.5
 }
   let surface = IAFInfo[soyState];
