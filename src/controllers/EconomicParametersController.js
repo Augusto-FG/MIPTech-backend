@@ -37,11 +37,11 @@ exports.calculateParameters = (req, res) => {
   let nde = treatmentCost / (soybeanValue * pestFactor * treatmentEfficiency);
   let ude = nde * (percentageForUDE/100);
   //esto esta calculado en insectos / ha. Los ingenieros agrónomos consumen esta info en metro lineal. Vamos a cambiarlo. 
-  rowSpacing = rowSpacing/1000;
+  rowSpacing = rowSpacing/100;
 //para pasar de cm a m
-  linearMeters = 100000/rowSpacing;
-  nde = nde / rowSpacing;
-  ude = ude / rowSpacing;
+  const linearMeters = 10000/rowSpacing;
+  nde = nde / linearMeters;
+  ude = ude / linearMeters;
   
   
   
