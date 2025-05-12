@@ -39,7 +39,7 @@ exports.calculateParameters = (req, res) => {
   //esto esta calculado en insectos / ha. Los ingenieros agrónomos consumen esta info en metro lineal. Vamos a cambiarlo. 
   rowSpacingMeters = rowSpacing/100;
 //para pasar de cm a m
-  const linearMeters = 10000/rowSpacing;
+  const linearMeters = 10000/rowSpacingMeters;
   nde = nde / linearMeters;
   ude = ude / linearMeters;
   
