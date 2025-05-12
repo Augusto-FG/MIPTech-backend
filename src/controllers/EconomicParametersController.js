@@ -25,12 +25,12 @@ exports.calculateParameters = (req, res) => {
   "R2": 6.3,
   "R3": 6.0,
   "R4": 6.3,
-  "R5": 7.8,
-  "R6": 7.8,
+  "R5": 7,
+  "R6": 7,
   "R8": 2.5
 }
   let surface = IAFInfo[soyState];
-  surface = surface * 10000 * 1000;
+  surface = surface * 10000 * 10000;
 //multiplica por 10000 para obtener la superficie por hectárea y por 1000 para pasarlo a cm cuadrados.
   const deffoliationPercentage = pestConsumption/surface;
   const pestFactor = deffoliationPercentage * 24.8;
