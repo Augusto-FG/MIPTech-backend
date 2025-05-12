@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { calculateParameters } = require('../controllers/calculateParameters.controller');
+const { calculateParameters } = require('../controllers/EconomicParametersController.js');
 
 router.post('/', calculateParameters);
 
