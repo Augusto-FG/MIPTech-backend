@@ -4,6 +4,9 @@ const fileUpload = require('express-fileupload');
 const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constants/index.js");
 const authRoutes = require('./routes/authRoutes.js'); 
+const userRoutes = require('./routes/userRoutes.js');
+const calculateParametersRoutes = require('./routes/calculateParametersRoutes.js');
+
 
 const app = express();
 
@@ -17,6 +20,8 @@ app.use(fileUpload({
 
 
 app.use( authRoutes);
+app.use(userRoutes); 
+app.use('/api/v1/calculate-parameters', calculateParametersRoutes);
 
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
