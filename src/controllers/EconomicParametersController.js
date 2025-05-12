@@ -15,7 +15,7 @@ exports.calculateParameters = (req, res) => {
   //despues ver con Ro en qué unidades me está pasando todo para adaptar!!
 
   // Vamos a calcular el factor de plaga.
-  const pestConsumption = 120
+  const pestConsumption = 110
   //consumo de la Anticarsia gemmatalis en cm cuadrados
   const IAFInfo = {
   "VC": 0.1,
@@ -37,7 +37,7 @@ exports.calculateParameters = (req, res) => {
   let nde = treatmentCost / (soybeanValue * pestFactor * treatmentEfficiency);
   let ude = nde * (percentageForUDE/100);
   //esto esta calculado en insectos / ha. Los ingenieros agrónomos consumen esta info en metro lineal. Vamos a cambiarlo. 
-  rowSpacingMeters = rowSpacing/100;
+  const rowSpacingMeters = rowSpacing/100;
 //para pasar de cm a m
   const linearMeters = 10000/rowSpacingMeters;
   nde = nde / linearMeters;
