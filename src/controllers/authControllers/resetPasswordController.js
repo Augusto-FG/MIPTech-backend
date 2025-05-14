@@ -8,12 +8,10 @@ const verificationCodes = {};
 
 // Send verification code to email
 exports.sendVerificationCode = async (req, res) => {
-  const { emailOrUsername } = req.body;
+  const { email } = req.body;
 
   try {
-    const user = await UserModel.findOne({
-      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
-    });
+    const user = await UserModel.findOne({ email });
 
     if (!user) {
       console.warn("[AUTH] User not found for recovery");
@@ -36,12 +34,10 @@ exports.sendVerificationCode = async (req, res) => {
 
 // Validate code and return JWT
 exports.loginWithCode = async (req, res) => {
-  const { emailOrUsername, code } = req.body;
+  const { email, code } = req.body;
 
   try {
-    const user = await UserModel.findOne({
-      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
-    });
+    const user = await UserModel.findOne({ email });
 
     if (!user) {
       console.warn("[AUTH] User not found during login");
@@ -62,11 +58,9 @@ exports.loginWithCode = async (req, res) => {
     return res.status(200).json({
       token,
       user: {
-        username: user.username,
         email: user.email,
         name: user.name,
-        surname: user.surname,
-        gender: user.gender,
+        lastname: user.lastname,
       },
     });
   } catch (error) {

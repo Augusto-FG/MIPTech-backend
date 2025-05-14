@@ -48,7 +48,7 @@ exports.getUserById = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   const { userId } = req.params;
-  const { email, name, surname, username, gender, role } = req.body;
+  const { email, name, lastname} = req.body;
 
   if (!req.user || req.user.id !== userId) {
     console.log('User is not authorized to modify this account');
@@ -61,7 +61,7 @@ exports.updateUser = async (req, res) => {
   try {
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      { email, name, surname, username, gender, role },
+      { email, name, lastname},
       { new: true }
     );
 
