@@ -1,4 +1,4 @@
-const EconomicParameter = require('../../models/EconomicParameters.js');
+const EconomicParameter = require('../models/EconomicParameters.js');
 
 exports.calculateParameters = async (req, res) => {
   try {
