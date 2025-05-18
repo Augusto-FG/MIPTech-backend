@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes.js');
 const userRoutes = require('./routes/userRoutes.js');
 const calculateParametersRoutes = require('./routes/calculateParametersRoutes.js');
 const plotRoutes = require('./routes/plotRoutes.js');
+const campaignRoutes = require('./routes/campaignRoutes.js');
 
 
 const app = express();
@@ -24,6 +25,7 @@ app.use(authRoutes);
 app.use(userRoutes); 
 app.use(calculateParametersRoutes);
 app.use(plotRoutes);
+app.use(campaignRoutes);
 
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
