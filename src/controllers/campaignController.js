@@ -106,20 +106,31 @@ const campaignController = {
   },
 
   deleteCampaign: async (req, res) => {
-    try {
-      const campaignId = req.params.id;
-      // Busca la campaña por ID y usuario
-      const campaign = await Campaign.findOneAndDelete({ _id: campaignId, user: req.user.id });
-      if (!campaign) {
-        console.warn(`⚠️ Campaign with id ${campaignId} not found`);
-        return res.status(404).json({ message: 'Campaign not found' });
-      }
-      res.json({ message: 'Campaign deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting campaign:', error);
-      res.status(500).json({ message: 'Error deleting campaign' });
+  try {
+    const campaignId = req.params.id;
+
+    // Validar si el ID tiene el formato correcto de ObjectId
+    if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+      return res.status(400).json({ message: 'Invalid campaign ID' });
     }
+
+    // Buscar y eliminar la campaña por ID y usuario autenticado
+    const campaign = await Campaign.findOneAndDelete({
+      _id: campaignId,
+      user: req.user.id
+    });
+
+    if (!campaign) {
+      console.warn(`⚠️ Campaign with id ${campaignId} not found or does not belong to user`);
+      return res.status(404).json({ message: 'Campaign not found' });
+    }
+
+    res.json({ message: 'Campaign deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting campaign:', error);
+    res.status(500).json({ message: 'Internal server error while deleting campaign' });
   }
+}
 
 };
 
