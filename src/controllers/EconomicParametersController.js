@@ -11,6 +11,8 @@ exports.calculateParameters = async (req, res) => {
       rowSpacing
     } = req.body;
 
+    console.log("🚀 Inicio de cálculo de parámetros económicos");
+
     // comprobamos que tenemos todos los datos.
     if (
       treatmentCost == undefined ||
@@ -58,12 +60,17 @@ exports.calculateParameters = async (req, res) => {
     ude = ude / linearMeters;
     console.log("Usuario autenticado:", req.user);
 
+    console.log("🧮 Cálculo completado con éxito");
+    console.log(`🔢 NDE: ${nde.toFixed(2)}, UDE: ${ude.toFixed(2)}`);
+
     // Guardamos el resultado en la base de datos
     await EconomicParameter.create({
       user: req.user.id,
       nde: parseFloat(nde.toFixed(2)),
       ude: parseFloat(ude.toFixed(2))
     });
+
+    console.log("💾 Parámetros económicos guardados correctamente en la base de datos");
 
     return res.status(200).json({
       nde: parseFloat(nde.toFixed(2)),

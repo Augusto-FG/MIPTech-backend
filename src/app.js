@@ -22,8 +22,8 @@ app.use(fileUpload({
 
 app.use(authRoutes);
 app.use(userRoutes); 
-app.use('/api/v1/economic-parameters', calculateParametersRoutes);
-app.use('/api/v1/plot', plotRoutes);
+app.use(calculateParametersRoutes);
+app.use(plotRoutes);
 
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
