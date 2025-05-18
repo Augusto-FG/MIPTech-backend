@@ -4,8 +4,9 @@ const plotController = require("../controllers/plotController.js");
 const { validateJwt  } = require("../middlewares/authMiddleware.js");
  
  
-router.post("/", validateJwt , plotController.createPlot);
-router.put("/:id", validateJwt, plotController.updatePlot);
-router.delete("/:id", validateJwt, plotController.deletePlot);
+router.post("/plot/", validateJwt , plotController.createPlot);
+router.get("/plot/", validateJwt , plotController.getUserPlots);
+router.put("/plot/:id", validateJwt, plotController.updatePlot);
+router.delete("/plot/:id", validateJwt, plotController.deletePlot);
  
 module.exports = router;
