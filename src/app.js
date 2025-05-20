@@ -8,6 +8,7 @@ const authRoutes = require('./routes/authRoutes.js');
 const userRoutes = require('./routes/userRoutes.js');
 const plotRoutes = require('./routes/plotRoutes.js');
 const campaignRoutes = require('./routes/campaignRoutes.js');
+const measurementsRoutes = require('./routes/measurementsRoutes.js');
 
 
 const app = express();
@@ -25,6 +26,8 @@ app.use(authRoutes);
 app.use(userRoutes); 
 app.use(plotRoutes);
 app.use(campaignRoutes);
+app.use(measurementsRoutes);
+
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
