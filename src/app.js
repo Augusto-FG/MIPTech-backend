@@ -3,9 +3,9 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constants/index.js");
+const calculateParametersRoutes = require('./routes/calculateParametersRoutes.js');
 const authRoutes = require('./routes/authRoutes.js'); 
 const userRoutes = require('./routes/userRoutes.js');
-const calculateParametersRoutes = require('./routes/calculateParametersRoutes.js');
 const plotRoutes = require('./routes/plotRoutes.js');
 const campaignRoutes = require('./routes/campaignRoutes.js');
 
@@ -20,13 +20,11 @@ app.use(fileUpload({
   tempFileDir: '/tmp/',
 }));
 
-
+app.use(calculateParametersRoutes);
 app.use(authRoutes);
 app.use(userRoutes); 
-app.use(calculateParametersRoutes);
 app.use(plotRoutes);
 app.use(campaignRoutes);
-
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
@@ -37,4 +35,3 @@ connectToDatabase().then(() => {
     `);
   });
 });
-
