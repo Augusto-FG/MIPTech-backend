@@ -1,4 +1,8 @@
 const Campaign = require('../models/campaignModel'); 
+const mongoose = require('mongoose');
+const Plot = require('../models/plotModel');
+
+
 
 // Controller for Campaign
 const campaignController = {
