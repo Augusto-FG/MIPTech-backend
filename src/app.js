@@ -5,11 +5,10 @@ const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constants/index.js");
 const calculateParametersRoutes = require('./routes/calculateParametersRoutes.js');
 const authRoutes = require('./routes/authRoutes.js'); 
-const userRoutes = require('./routes/userRoutes.js');
 const plotRoutes = require('./routes/plotRoutes.js');
 const campaignRoutes = require('./routes/campaignRoutes.js');
 const measurementsRoutes = require('./routes/measurementsRoutes.js');
-
+const userRoutes = require('./routes/userRoutes.js');
 
 const app = express();
 
