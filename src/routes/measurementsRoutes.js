@@ -7,7 +7,6 @@ const {
   deleteMeasurement
 } = require("../controllers/measurementsController");
 
-console.log("✅ measurementsRoutes.js cargado correctamente");
 
 // Crear una medición
 router.post("/measurements", validateJwt, createMeasurement);
