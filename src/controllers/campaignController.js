@@ -10,7 +10,7 @@ const campaignController = {
   // Get active campaigns for user
   getActiveCampaigns: async (req, res) => {
     try {
-      const campaigns = await Campaign.find({ user: req.user.id, isActive: true });
+      const campaigns = await Campaign.find({ user: req.user.id, is_active: true });
       res.json(campaigns);
     } catch (error) {
       console.error('Error fetching active campaigns:', error);
@@ -21,7 +21,7 @@ const campaignController = {
   // Get past (closed) campaigns for user
   getPastCampaigns: async (req, res) => {
     try {
-      const campaigns = await Campaign.find({ user: req.user.id, isActive: false });
+      const campaigns = await Campaign.find({ user: req.user.id, is_active: false });
       res.json(campaigns);
     } catch (error) {
       console.error('Error fetching past campaigns:', error);
@@ -32,34 +32,33 @@ const campaignController = {
   // Create campaign (default isActive: true)
   createCampaign: async (req, res) => {
   try {
-    const { crop, variety, sowingDate, harvestEstimated, harvestActual, isActive, lot } = req.body;
+    const { crop, variant, sowing_date, harvest_date, is_active, lot } = req.body;
 
     // Validación básica
-    if (!crop || !variety || !sowingDate || !lot) {
+    if (!crop || !variant || !sowing_date || !plot) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
     const userId = req.user.id;
 
     // Si no se especifica isActive o si es true, se asume que es una campaña actual
-    const isCreatingActual = isActive === undefined || isActive === true;
+    const isCreatingActual = is_active === undefined || is_active === true;
 
     if (isCreatingActual) {
       // Desactivar campañas actuales anteriores del mismo usuario y lote
       await Campaign.updateMany(
-        { user: userId, lot: lot, isActive: true },
-        { $set: { isActive: false } }
+        { user: userId, plot: plot, is_active: true },
+        { $set: { is_active: false } }
       );
     }
 
     const newCampaign = new Campaign({
       crop,
-      variety,
-      sowingDate,
-      harvestEstimated,
-      harvestActual,
-      isActive: isActive ?? true,
-      lot,
+      variant,
+      sowing_date,
+      harvest_date,
+      is_active: is_active ?? true,
+      plot,
       user: userId
     });
 
@@ -72,7 +71,7 @@ const campaignController = {
   }
 },
 
-  // Update campaign (example: closing a campaign)
+  // Update campaign 
   updateCampaign: async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -84,9 +83,9 @@ const campaignController = {
         return res.status(404).json({ message: 'Campaign not found' });
       }
 
-      if (campaign.isActive) {
+      if (campaign.is_active) {
         // Active campaign: example - do not allow sowingDate change
-        if (updates.sowingDate) {
+        if (updates.sowing_date) {
           return res.status(400).json({ message: 'Cannot modify sowingDate in active campaigns' });
         }
       } else {
