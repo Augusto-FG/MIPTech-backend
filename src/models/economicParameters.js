@@ -6,6 +6,13 @@ const economicParameterSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+
+  plotID: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Plot',
+    required: true
+  },
+
   treatmentCost: { type: Number, required: true },
   soybeanValue: { type: Number, required: true },
   treatmentEfficiency: { type: Number, required: true },
