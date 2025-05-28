@@ -32,7 +32,7 @@ const campaignController = {
   // Create campaign (default isActive: true)
   createCampaign: async (req, res) => {
   try {
-    const { crop, variant, sowing_date, harvest_date, is_active, lot } = req.body;
+    const { crop, variant, sowing_date, harvest_date, is_active, plot } = req.body;
 
     // Validación básica
     if (!crop || !variant || !sowing_date || !plot) {
