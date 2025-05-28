@@ -9,6 +9,8 @@ const plotRoutes = require('./routes/plotRoutes.js');
 const campaignRoutes = require('./routes/campaignRoutes.js');
 const measurementsRoutes = require('./routes/measurementsRoutes.js');
 const userRoutes = require('./routes/userRoutes.js');
+const chatRoutes = require('./routes/chatRoutes.js');
+
 
 const app = express();
 
@@ -26,6 +28,7 @@ app.use(userRoutes);
 app.use(plotRoutes);
 app.use(campaignRoutes);
 app.use(measurementsRoutes);
+app.use(chatRoutes)
 
 connectToDatabase().then(() => {
   app.listen(PORT, () => {
