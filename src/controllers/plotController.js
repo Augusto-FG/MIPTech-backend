@@ -93,7 +93,6 @@ const createPlot = async (req, res) => {
       province,
       partido_or_department,
       locality,
-      active:true // Por defecto, el lote está activo
     });
 
     await newPlot.save();
@@ -120,21 +119,16 @@ const updatePlot = async (req, res) => {
     console.log("👤 Authenticated user ID:", userId);
     console.log("🔄 Update data:", updatedData);
 
-    // Buscar el lote y verificar si es del usuario y está activo
-    const plot = await Plot.findOne({ _id: plotId, user: userId });
+    const updatedPlot = await Plot.findOneAndUpdate(
+      { _id: plotId, user: userId }, // Ensures the plot belongs to the user
+      updatedData,
+      { new: true }
+    );
 
-    if (!plot) {
+    if (!updatedPlot) {
       console.warn(`⚠️ Plot not found or not authorized. ID: ${plotId}, User: ${userId}`);
       return res.status(404).json({ message: "Plot not found or not authorized" });
     }
-
-    if (!plot.active) {
-      console.warn(`❌ Attempt to update an inactive plot. ID: ${plotId}`);
-      return res.status(403).json({ message: "Cannot update an inactive plot" });
-    }
-
-    // Actualizar el lote
-    const updatedPlot = await Plot.findByIdAndUpdate(plotId, updatedData, { new: true });
 
     console.log("✅ Plot updated successfully");
 
@@ -147,7 +141,6 @@ const updatePlot = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 const deletePlot = async (req, res) => {
   const plotId = req.params.id;
@@ -173,103 +166,24 @@ const getUserPlots = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    console.log("📥 Request to fetch user's active plots");
+    console.log("📥 Request to fetch user's plots");
     console.log("👤 Authenticated user ID:", userId);
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = 12;
-    const skip = (page - 1) * limit;
+    const userPlots = await Plot.find({ user: userId });
 
-    // Get all plots from user to calculate summary
-    const allUserPlots = await Plot.find({ user: userId });
-
-    const active_count = allUserPlots.filter(p => p.active).length;
-    const inactive_count = allUserPlots.filter(p => !p.active).length;
-    const total_area = allUserPlots.reduce((sum, p) => sum + (p.area || 0), 0);
-
-    // Paginate only active plots
-    const user_plots = await Plot.find({ user: userId, active: true })
-      .sort({ provincia: 1, partido_or_department: 1, locality: 1 })
-      .skip(skip)
-      .limit(limit);
-
-    if (!user_plots.length) {
-      console.warn(`⚠️ No active plots found on page ${page} for user ID: ${userId}`);
-      return res.status(404).json({ message: "No active plots found for this page" });
+    if (!userPlots.length) {
+      console.warn(`⚠️ No plots found for user with ID: ${userId}`);
+      return res.status(404).json({ message: "No plots found for this user" });
     }
 
-    console.log(`✅ Found ${user_plots.length} active plots on page ${page} for user`);
+    console.log(`✅ Found ${userPlots.length} plots for the user`);
 
     res.status(200).json({
-      message: "Active user plots fetched successfully",
-      plots: user_plots,
-      summary: {
-        active_count,
-        inactive_count,
-        total_area,
-      }
+      message: "User plots fetched successfully",
+      plots: userPlots
     });
   } catch (error) {
     console.error("❌ Error fetching user's plots:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-// Deactivate a plot
-const deactivatePlot = async (req, res) => {
-  const plotId = req.params.id;
-  const userId = req.user.id;
-
-  try {
-    const plot = await Plot.findOne({ _id: plotId, user: userId });
-
-    if (!plot) {
-      return res.status(404).json({ message: "Plot not found or not authorized" });
-    }
-
-    if (!plot.active) {
-      return res.status(400).json({ message: "Plot is already inactive" });
-    }
-
-    plot.active = false;
-    await plot.save();
-
-    res.status(200).json({
-      message: "Plot deactivated successfully",
-      plot,
-    });
-  } catch (error) {
-    console.error("❌ Error deactivating plot:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-const reactivatePlot = async (req, res) => {
-  const plotId = req.params.id;
-  const userId = req.user.id;
-
-  try {
-    const plot = await Plot.findOne({ _id: plotId, user: userId });
-
-    if (!plot) {
-      return res.status(404).json({ message: "Plot not found or not authorized" });
-    }
-
-    if (plot.active) {
-      return res.status(400).json({ message: "Plot is already active" });
-    }
-
-    plot.active = true;
-    await plot.save();
-
-    console.log(`✅ Plot with ID ${plotId} was reactivated`);
-    res.status(200).json({
-      message: "Plot reactivated successfully",
-      plot,
-    });
-  } catch (error) {
-    console.error("❌ Error reactivating plot:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -279,7 +193,5 @@ module.exports = {
   getUserPlots,
   updatePlot,
   deletePlot,
-  getPlotCountByUser,
-  deactivatePlot,
-  reactivatePlot
+  getPlotCountByUser
 };

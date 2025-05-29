@@ -9,7 +9,6 @@ router.get("/plot/", validateJwt , plotController.getUserPlots);
 router.put("/plot/:id", validateJwt, plotController.updatePlot);
 router.delete("/plot/:id", validateJwt, plotController.deletePlot);
 router.get('/plot/count', validateJwt, plotController.getPlotCountByUser);
-router.patch('/plot/:id/deactivate', validateJwt, plotController.deactivatePlot);
-router.patch('/plot/:id/reactivate', validateJwt, plotController.reactivatePlot);
+
  
 module.exports = router;

@@ -1,6 +1,5 @@
 const Measurement = require("../models/measurementsModel");
 const Campaign = require("../models/campaignModel");
-const Plot = require("../models/plotModel");
 
 // Crear una nueva medición
 const createMeasurement = async (req, res) => {
@@ -27,27 +26,23 @@ const createMeasurement = async (req, res) => {
       console.log("❌ Densidad debe ser mayor a 0");
       return res.status(400).json({ message: "La densidad debe ser mayor a 0" });
     }
-    
-    // Buscamos la campaña y populamos el plot
-    const campaignData = await Campaign.findById(campaign).populate("plot");
-    if (!campaignData) {
-      return res.status(404).json({ message: "Campaña no encontrada" });
-    }
-
-    // Validar que el plot asociado esté activo
-    if (!campaignData.plot || campaignData.plot.active === false) {
-      return res.status(403).json({ message: "No se pueden crear mediciones para un lote inactivo" });
-    }
 
     // Validar fecha
     const measurementDate = new Date(date);
     const currentDate = new Date();
+
+    const campaignData = await Campaign.findById(campaign);
+    if (!campaignData) {
+      console.log("❌ Campaña no encontrada");
+      return res.status(404).json({ message: "Campaña no encontrada" });
+    }
 
     if (
       measurementDate < campaignData.sowingDate ||
       measurementDate > currentDate ||
       (campaignData.harvestEstimated && measurementDate > campaignData.harvestEstimated)
     ) {
+      console.log("❌ Fecha fuera de los límites permitidos");
       return res.status(400).json({ message: "Fecha fuera de los límites permitidos" });
     }
 
@@ -100,30 +95,20 @@ const deleteMeasurement = async (req, res) => {
   try {
     const { measurementId } = req.params;
 
-    console.log(`🗑️ Attempting to delete measurement with ID: ${measurementId}`);
+    console.log(`🗑️ Intentando eliminar medición con ID: ${measurementId}`);
 
-    const measurement = await Measurement.findById(measurementId).populate({
-      path: "campaign",
-      populate: { path: "plot" }
-    });
+    const deletedMeasurement = await Measurement.findByIdAndDelete(measurementId);
 
-    if (!measurement) {
-      console.log("❌ Measurement not found");
-      return res.status(404).json({ message: "Measurement not found" });
+    if (!deletedMeasurement) {
+      console.log("❌ Medición no encontrada");
+      return res.status(404).json({ message: "Medición no encontrada" });
     }
 
-    if (!measurement.campaign.plot || measurement.campaign.plot.active === false) {
-      console.log("🚫 Cannot delete measurements from an inactive plot");
-      return res.status(403).json({ message: "Cannot delete measurements from an inactive plot" });
-    }
-
-    await Measurement.findByIdAndDelete(measurementId);
-
-    console.log("✅ Measurement successfully deleted");
-    res.status(200).json({ message: "Measurement successfully deleted" });
+    console.log("✅ Medición eliminada correctamente");
+    res.status(200).json({ message: "Medición eliminada correctamente" });
   } catch (error) {
-    console.error("❌ Error deleting measurement:", error);
-    res.status(500).json({ message: "Error deleting the measurement" });
+    console.error("❌ Error al eliminar medición:", error);
+    res.status(500).json({ message: "Error al eliminar la medición" });
   }
 };
 
