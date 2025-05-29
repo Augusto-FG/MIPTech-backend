@@ -11,7 +11,8 @@ const plotSchema = new mongoose.Schema({
   previous_campaigns: [{ type: mongoose.Schema.Types.ObjectId, ref: "Campaign" }],
   province: String,
   partido_or_department: String,
-  localty: String,
-});
+  locality: String,
+  active: { type: Boolean, default: true },
+}, { timestamps: true });
 
 module.exports = mongoose.model("Plot", plotSchema);

@@ -1,6 +1,6 @@
 // src/controllers/economic-parameters.controller.js
 
-const EconomicParameter  = require('../models/EconomicParameters.js');
+const EconomicParameter = require('../models/EconomicParameters.js');
 const mongoose = require('mongoose');
 const Plot = require('../models/plotModel');
 
@@ -29,27 +29,30 @@ exports.calculateParameters = async (req, res) => {
       plotID == undefined
     ) {
       console.log('Missing or invalid input data');
-      return res.status(400).json({ message: 'Datos faltantes o inválidos' });
-    }
-      //validamos que el lote sea valido.
-    if (!mongoose.Types.ObjectId.isValid(plotID)) {
-      return res.status(400).json({ message: 'plotID inválido' });
-    }
-    const plot = await Plot.findOne({ _id: plotID, user: req.user.id });
-    if (!plot) {
-      return res.status(404).json({ message: 'Lote no encontrado o sin permiso' });
+      return res.status(400).json({ message: 'Missing or invalid data' });
     }
 
-    // Factor de plaga
-    const pestConsumption = 110; // consumo en cm²
+    if (!mongoose.Types.ObjectId.isValid(plotID)) {
+      return res.status(400).json({ message: 'Invalid plotID' });
+    }
+
+    const plot = await Plot.findOne({ _id: plotID, user: req.user.id });
+    if (!plot) {
+      return res.status(404).json({ message: 'Plot not found or unauthorized' });
+    }
+    if (!plot.active) {
+      return res.status(403).json({ message: 'Cannot calculate parameters for an inactive plot' });
+    }
+
+    const pestConsumption = 110; // cm²
     const IAFInfo = {
       VC: 0.1, V2: 1.2, V5: 4.8,
       R1: 6.7, R2: 6.3, R3: 6.0,
-      R4: 6.3, R5: 7,   R6: 7,
+      R4: 6.3, R5: 7, R6: 7,
       R8: 2.5
     };
 
-    let surface = IAFInfo[soyState] * 10000 * 10000; // ha → cm²
+    let surface = IAFInfo[soyState] * 10000 * 10000;
     const defoliationPercentage = pestConsumption / surface;
     const pestFactor = defoliationPercentage * 30;
 
@@ -61,7 +64,7 @@ exports.calculateParameters = async (req, res) => {
     nde = nde / linearMeters;
     ude = ude / linearMeters;
 
-    console.log('Computed NDE:', nde.toFixed(2), 'Computed UDE:', ude.toFixed(2));
+    console.log('Computed NDE:', nde.toFixed(2), 'UDE:', ude.toFixed(2));
 
     const newCalc = await EconomicParameter.create({
       user: req.user.id,
@@ -92,7 +95,7 @@ exports.calculateParameters = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in calculateParameters:', error);
-    return res.status(500).json({ message: 'Error al calcular y guardar los parámetros' });
+    return res.status(500).json({ message: 'Failed to calculate and save parameters' });
   }
 };
 
@@ -122,23 +125,26 @@ exports.updateParameters = async (req, res) => {
       plotID == undefined
     ) {
       console.log('Missing data for update');
-      return res.status(400).json({ message: 'Faltan datos para actualizar el cálculo' });
+      return res.status(400).json({ message: 'Missing data to update calculation' });
     }
 
-    //validamos que el lote sea valido.
     if (!mongoose.Types.ObjectId.isValid(plotID)) {
-      return res.status(400).json({ message: 'plotID inválido' });
+      return res.status(400).json({ message: 'Invalid plotID' });
     }
+
     const plot = await Plot.findOne({ _id: plotID, user: req.user.id });
     if (!plot) {
-      return res.status(404).json({ message: 'Lote no encontrado o sin permiso' });
+      return res.status(404).json({ message: 'Plot not found or unauthorized' });
+    }
+    if (!plot.active) {
+      return res.status(403).json({ message: 'Cannot update parameters of an inactive plot' });
     }
 
     const pestConsumption = 110;
     const IAFInfo = {
       VC: 0.1, V2: 1.2, V5: 4.8,
       R1: 6.7, R2: 6.3, R3: 6.0,
-      R4: 6.3, R5: 7,   R6: 7,
+      R4: 6.3, R5: 7, R6: 7,
       R8: 2.5
     };
 
@@ -154,7 +160,7 @@ exports.updateParameters = async (req, res) => {
     nde = nde / linearMeters;
     ude = ude / linearMeters;
 
-    console.log('Updated computed NDE:', nde.toFixed(2), 'Updated computed UDE:', ude.toFixed(2));
+    console.log('Updated NDE:', nde.toFixed(2), 'UDE:', ude.toFixed(2));
 
     const updated = await EconomicParameter.findOneAndUpdate(
       { _id: id, user: req.user.id },
@@ -174,14 +180,44 @@ exports.updateParameters = async (req, res) => {
 
     if (!updated) {
       console.log('Update failed: not found or unauthorized');
-      return res.status(404).json({ message: 'Cálculo no encontrado o no autorizado' });
+      return res.status(404).json({ message: 'Calculation not found or unauthorized' });
     }
 
     console.log('Calculation updated:', updated._id);
     return res.status(200).json(updated);
   } catch (error) {
     console.error('Error in updateParameters:', error);
-    return res.status(500).json({ message: 'Error al actualizar los parámetros' });
+    return res.status(500).json({ message: 'Failed to update parameters' });
+  }
+};
+
+exports.deleteParameter = async (req, res) => {
+  console.log('>> deleteParameter called');
+  console.log('Params:', req.params);
+
+  try {
+    const { id } = req.params;
+    const parameter = await EconomicParameter.findOne({ _id: id, user: req.user.id });
+
+    if (!parameter) {
+      console.log('Delete failed: parameter not found or unauthorized');
+      return res.status(404).json({ message: 'Parameter not found or unauthorized to delete' });
+    }
+
+    const plot = await Plot.findOne({ _id: parameter.plotID, user: req.user.id });
+    if (!plot) {
+      return res.status(404).json({ message: 'Associated plot not found' });
+    }
+    if (!plot.active) {
+      return res.status(403).json({ message: 'Cannot delete parameters of an inactive plot' });
+    }
+
+    await parameter.deleteOne();
+    console.log('Parameter deleted:', parameter._id);
+    return res.status(200).json({ message: 'Parameter deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteParameter:', error);
+    return res.status(500).json({ message: 'Failed to delete parameter' });
   }
 };
 
@@ -218,34 +254,13 @@ exports.getParameterById = async (req, res) => {
 
     if (!parameter) {
       console.log('Parameter not found or unauthorized:', id);
-      return res.status(404).json({ message: 'Parámetro no encontrado o no autorizado' });
+      return res.status(404).json({ message: 'Parameter not found or unauthorized' });
     }
 
     console.log('Parameter fetched:', parameter._id);
     return res.status(200).json(parameter);
   } catch (error) {
     console.error('Error in getParameterById:', error);
-    return res.status(500).json({ message: 'Error al obtener el parámetro' });
-  }
-};
-
-exports.deleteParameter = async (req, res) => {
-  console.log('>> deleteParameter called');
-  console.log('Params:', req.params);
-
-  try {
-    const { id } = req.params;
-    const deleted = await EconomicParameter.findOneAndDelete({ _id: id, user: req.user.id });
-
-    if (!deleted) {
-      console.log('Delete failed: not found or unauthorized:', id);
-      return res.status(404).json({ message: 'Parámetro no encontrado o no autorizado para eliminar' });
-    }
-
-    console.log('Parameter deleted:', deleted._id);
-    return res.status(200).json({ message: 'Parámetro eliminado correctamente' });
-  } catch (error) {
-    console.error('Error in deleteParameter:', error);
-    return res.status(500).json({ message: 'Error al eliminar el parámetro' });
+    return res.status(500).json({ message: 'Failed to fetch parameter' });
   }
 };
