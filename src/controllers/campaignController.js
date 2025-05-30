@@ -68,8 +68,8 @@ const campaignController = {
       if (!selectedPlot) {
         return res.status(404).json({ error: "Plot not found or does not belong to the user" });
       }
-
-      if (!selectedPlot.is_active) {
+//posible corrección
+      if (!selectedPlot.active) {
         return res.status(400).json({ error: "Cannot create a campaign on an inactive plot" });
       }
 
