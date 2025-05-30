@@ -5,12 +5,12 @@ const Plot = require("../models/plotModel");
 // Crear una nueva medición
 const createMeasurement = async (req, res) => {
   try {
-    const { date, pestType, pestDensity, unit, campaign, user } = req.body;
+    const { date, pestType, pestDensity, unit, campaign } = req.body;
+    const user = req.user.id;
 
-    console.log("📥 Datos recibidos para nueva medición:", req.body);
 
     // Validación de campos obligatorios
-    if (!date || !pestType || !pestDensity || !unit || !campaign || !user) {
+    if (!date || !pestType || !pestDensity || !unit || !campaign) { 
       console.log("❌ Faltan campos obligatorios");
       return res.status(400).json({ message: "Faltan campos obligatorios" });
     }
@@ -44,9 +44,8 @@ const createMeasurement = async (req, res) => {
     const currentDate = new Date();
 
     if (
-      measurementDate < campaignData.sowingDate ||
-      measurementDate > currentDate ||
-      (campaignData.harvestEstimated && measurementDate > campaignData.harvestEstimated)
+      measurementDate < campaignData.sowing_date ||
+      measurementDate > currentDate || measurementDate > campaignData.harvest_date
     ) {
       return res.status(400).json({ message: "Fecha fuera de los límites permitidos" });
     }
@@ -61,7 +60,7 @@ const createMeasurement = async (req, res) => {
     });
 
     const savedMeasurement = await newMeasurement.save();
-    console.log("✅ Medición guardada correctamente:", savedMeasurement);
+    console.log("✅ Medición guardada correctamente");
 
     res.status(201).json(savedMeasurement);
   } catch (error) {
@@ -74,21 +73,40 @@ const createMeasurement = async (req, res) => {
 const getMeasurementsByCampaign = async (req, res) => {
   try {
     const { campaignId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 12;
+    const skip = (page - 1) * limit;
 
-    console.log(`🔎 Buscando mediciones para la campaña: ${campaignId}`);
+    console.log(`🔎 Buscando mediciones para la campaña: ${campaignId}, página ${page}`);
 
-    // Buscamos todas las mediciones que coincidan con el ID de campaña
+    // Contar total de mediciones para la campaña (para paginación)
+    const totalMeasurements = await Measurement.countDocuments({ campaign: campaignId });
+
     const measurements = await Measurement.find({ campaign: campaignId })
-      .populate("user", "name lastname email")
-      .populate("campaign", "crop variety sowingDate harvestEstimated");
+      .select("-user") // Evitamos enviar los datos del usuario
+      .populate("campaign", "crop variety sowing_date harvest_date")
+      .skip(skip)
+      .limit(limit);
 
     if (!measurements || measurements.length === 0) {
       console.log("⚠️ No se encontraron mediciones para esta campaña");
       return res.status(404).json({ message: "No se encontraron mediciones para esta campaña" });
     }
 
-    console.log(`✅ Se encontraron ${measurements.length} mediciones`);
-    res.status(200).json(measurements);
+    const totalPages = Math.ceil(totalMeasurements / limit);
+
+    console.log(`✅ Página ${page}: ${measurements.length} mediciones encontradas`);
+
+    res.status(200).json({
+      measurements,
+      pagination: {
+        total: totalMeasurements,
+        page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
   } catch (error) {
     console.error("❌ Error al obtener mediciones:", error);
     res.status(500).json({ message: "Error al obtener las mediciones" });
