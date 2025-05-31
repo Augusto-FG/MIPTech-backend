@@ -1,6 +1,9 @@
 const UserModel = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require("../constants/index.js");
+const PlotModel = require('../models/plotModel.js');  
+const { addMonths } = require('date-fns');
+
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -118,7 +121,7 @@ exports.activateMembership = async (req, res) => {
 
   try {
     //unicamente activamos la membresia en los casos en los que no tenga membresia.
-    const already = await UserModel.exists({ _id: userId, hasMembership: true });
+    const already = await UserModel.exists({ _id: userId, hasMembership: true })
     if (already) {
       console.info(`ℹ️ El usuario con ID ${userId} ya tiene membresía`);
       return res.status(400).json({
@@ -126,12 +129,21 @@ exports.activateMembership = async (req, res) => {
         message: 'User already has membership',
       });
     }
-    
+
+    // Calcular fecha de expiracion: hoy + 1 mes (ya que son membresias mensuales)
+    //Además, cuando se vencen, se autorenuevan por 1 mes (a menos que el usuario decida darse de baja) 
+    const expiresAt = addMonths(new Date(), 1);
+
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      { hasMembership: true },
+      {
+        hasMembership:       true,
+        membershipExpiresAt: expiresAt,
+        autoRenew:           true,
+        unsubscribed:        false,
+        needsCleanup:        false
+      },
       { new: true }
-      //new: true sirve para que devuelva el doc actualizado y no el viejo.
     );
 
     if (!updatedUser) {
@@ -142,10 +154,18 @@ exports.activateMembership = async (req, res) => {
       });
     }
 
+    // Si pudimos activar la membresia, ahora activamos TODOS los lotes del usuario (por ejemplo, si en algun momento tenia una membresia, registro 15 y la dio de baja, solo tenia 8 de esos 15 activos, como ahora esta subscripto, puede tener los 15 activos nuevamente).
+    const result = await PlotModel.updateMany(
+      { user: userId },
+      { $set: { active: true } }
+    );
+    console.log(`✅ Se activaron ${result.modifiedCount} lote(s) para el usuario ${userId}`);
+
+
     console.log(`✅ Membresía activada correctamente para el usuario con ID: ${userId}`);
     return res.status(200).json({
       code: 200,
-      message: 'Membership activated successfully',
+      message: 'Membership activated and all plots set to active successfully',
       user: updatedUser,
     });
 
@@ -173,21 +193,33 @@ exports.deactivateMembership = async (req, res) => {
   }
 
   try {
-    //validamos que tenga membresia activa que dar de baja.
-    const already = await UserModel.exists({ _id: userId, hasMembership: true });
-    if (!already) {
-      console.info(`ℹ️ El usuario con ID ${userId} no tenía ninguna membresía activa`);
+    const user = await UserModel.findById(userId);
+    if (!user || !user.hasMembership) {
       return res.status(400).json({
         code: 400,
-        message: 'User doesnt have any active memberships',
+        message: 'User doesn’t have any active memberships',
       });
     }
-    //si no dio error en el paso anterior, el usuario tenia alguna membresia activa, por lo que la desactivamos,
+
+    // 2) Verificamos si ya solicitó la baja
+    if (user.unsubscribed) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Membership cancellation already requested, awaiting expiration date.',
+      });
+    }
+
+    //si no dio error en el paso anterior, el usuario tenia alguna membresia activa, por lo que marcamos que una vez que pase el plazo que había pagado, no se renovará,
+     // Marcamos que NO renueve y que está en período post-subscripción
     const updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      { hasMembership: false },
-      { new: true }
-    );
+        userId,
+        {
+          autoRenew:    false,
+          unsubscribed: true
+          // NOTA: dejamos hasMembership a true hasta que expire (de esto se ocupa el servicio que corre periodicamente)
+        },
+        { new: true }
+      );
     //si dio error, lo devolvemos
     if (!updatedUser) {
       console.warn(`⚠️ Usuario con ID ${userId} no encontrado en la base de datos`);
