@@ -10,6 +10,7 @@ const campaignRoutes = require('./routes/campaignRoutes.js');
 const measurementsRoutes = require('./routes/measurementsRoutes.js');
 const userRoutes = require('./routes/userRoutes.js');
 const chatRoutes = require('./routes/chatRoutes.js');
+const scheduleMembershipJobs = require('./jobs/checkMemberships.js');
 
 
 const app = express();
@@ -31,7 +32,9 @@ app.use(measurementsRoutes);
 app.use(chatRoutes)
 
 connectToDatabase().then(() => {
+  scheduleMembershipJobs(); 
   app.listen(PORT, () => {
+  
     console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
     console.log(`
      ╔════════════════════════════════════╗

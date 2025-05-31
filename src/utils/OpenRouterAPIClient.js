@@ -1,12 +1,9 @@
-// archivo: utils/OpenRouterAPIClient.js
-
 class OpenRouterAPIClient {
   constructor(apiKey) {
     this.apiKey = apiKey;
     this.baseUrl = "https://openrouter.ai/api/v1";
   }
 
-  // Antes recibía un solo mensaje, ahora recibe una lista de mensajes
     async sendChatMessage(messages) {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
