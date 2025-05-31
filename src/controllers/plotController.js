@@ -173,58 +173,44 @@ const getUserPlots = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    console.log("📥 Request to fetch user's active plots");
-    console.log("👤 Authenticated user ID:", userId);
-
+    // Paginar si es necesario
     const page = parseInt(req.query.page) || 1;
-    const limit = 12;
+    const limit = 10;
     const skip = (page - 1) * limit;
 
-    // Obtener todos los lotes del usuario (activos o no) para calcular el resumen
+    // Obtener todos los lotes del usuario (activos e inactivos)
     const allUserPlots = await Plot.find({ user: userId });
 
-    const total_area = allUserPlots.reduce((sum, p) => sum + (p.surface || 0), 0);
+    // Solo los activos (para retornar en el campo "plots")
+    const activePlots = allUserPlots.filter(p => p.active);
 
-    const plotsWithActiveCampaign = allUserPlots.filter(p =>
-      p.campaigns && p.campaigns.some(c => c.active)
-    ).length;
+    const paginatedActivePlots = activePlots.slice(skip, skip + limit);
+    const totalPages = Math.ceil(activePlots.length / limit);
 
-    const plotsWithoutActiveCampaign = allUserPlots.length - plotsWithActiveCampaign;
-
-    // Obtener el total de lotes activos para paginación
-    const totalActivePlots = await Plot.countDocuments({ user: userId, active: true });
-    const total_pages = Math.ceil(totalActivePlots / limit);
-
-    // Obtener solo los lotes activos paginados
-    const user_plots = await Plot.find({ user: userId, active: true })
-      .sort({ provincia: 1, partido_or_department: 1, locality: 1 })
-      .skip(skip)
-      .limit(limit);
-
-    if (!user_plots.length) {
-      console.warn(`⚠️ No active plots found on page ${page} for user ID: ${userId}`);
-      return res.status(404).json({ message: "No active plots found for this page" });
-    }
-
-    console.log(`✅ Found ${user_plots.length} active plots on page ${page} for user`);
+    // Calcular el resumen
+    const total_area = activePlots.reduce((sum, plot) => sum + (plot.surface || 0), 0);
+    const plots_with_active_campaign = activePlots.filter(plot => plot.current_campaign !== null).length;
+    const plots_without_active_campaign = activePlots.length - plots_with_active_campaign;
+    const has_inactive_plots = allUserPlots.some(p => !p.active);
 
     res.status(200).json({
       message: "Active user plots fetched successfully",
-      plots: user_plots,
+      plots: paginatedActivePlots,
       current_page: page,
-      total_pages: total_pages,
+      total_pages: totalPages,
       summary: {
         total_area,
-        plots_with_active_campaign: plotsWithActiveCampaign,
-        plots_without_active_campaign: plotsWithoutActiveCampaign
+        plots_with_active_campaign,
+        plots_without_active_campaign,
+        has_inactive_plots
       }
     });
+
   } catch (error) {
-    console.error("❌ Error fetching user's plots:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error fetching user plots:", error);
+    res.status(500).json({ message: "Error fetching user plots" });
   }
 };
-
 
 // Deactivate a plot
 const deactivatePlot = async (req, res) => {

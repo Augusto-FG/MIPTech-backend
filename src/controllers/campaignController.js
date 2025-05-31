@@ -96,10 +96,11 @@ const campaignController = {
       if (isCreatingActual) {
         selectedPlot.current_campaign = newCampaign._id;
       } else {
-        selectedPlot.past_campaigns.push(newCampaign._id);
+        selectedPlot.previous_campaigns ??= [];
+        selectedPlot.previous_campaigns.push(newCampaign._id);
       }
 
-      await selectedPlot.save(); // <- CAMBIO AQUÍ
+      await selectedPlot.save();
 
       res.status(201).json(newCampaign);
 
@@ -135,7 +136,7 @@ const campaignController = {
           return res.status(404).json({ message: 'Plot not found or does not belong to the user' });
         }
 
-        if (!selectedPlot.active) { // <- CAMBIO AQUÍ
+        if (!selectedPlot.active) {
           return res.status(400).json({ message: 'Cannot assign an inactive plot to a campaign' });
         }
       }
@@ -185,7 +186,7 @@ const campaignController = {
         return res.status(404).json({ message: 'Associated plot not found or not owned by user' });
       }
 
-      if (!plot.active) { // <- CAMBIO AQUÍ
+      if (!plot.active) {
         return res.status(400).json({ message: 'Cannot delete campaign linked to an inactive plot' });
       }
 
