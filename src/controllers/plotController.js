@@ -180,14 +180,22 @@ const getUserPlots = async (req, res) => {
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    // Get all plots from user to calculate summary
+    // Obtener todos los lotes del usuario (activos o no) para calcular el resumen
     const allUserPlots = await Plot.find({ user: userId });
 
-    const active_count = allUserPlots.filter(p => p.active).length;
-    const inactive_count = allUserPlots.filter(p => !p.active).length;
-    const total_area = allUserPlots.reduce((sum, p) => sum + (p.area || 0), 0);
+    const total_area = allUserPlots.reduce((sum, p) => sum + (p.surface || 0), 0);
 
-    // Paginate only active plots
+    const plotsWithActiveCampaign = allUserPlots.filter(p =>
+      p.campaigns && p.campaigns.some(c => c.active)
+    ).length;
+
+    const plotsWithoutActiveCampaign = allUserPlots.length - plotsWithActiveCampaign;
+
+    // Obtener el total de lotes activos para paginación
+    const totalActivePlots = await Plot.countDocuments({ user: userId, active: true });
+    const total_pages = Math.ceil(totalActivePlots / limit);
+
+    // Obtener solo los lotes activos paginados
     const user_plots = await Plot.find({ user: userId, active: true })
       .sort({ provincia: 1, partido_or_department: 1, locality: 1 })
       .skip(skip)
@@ -203,10 +211,12 @@ const getUserPlots = async (req, res) => {
     res.status(200).json({
       message: "Active user plots fetched successfully",
       plots: user_plots,
+      current_page: page,
+      total_pages: total_pages,
       summary: {
-        active_count,
-        inactive_count,
         total_area,
+        plots_with_active_campaign: plotsWithActiveCampaign,
+        plots_without_active_campaign: plotsWithoutActiveCampaign
       }
     });
   } catch (error) {

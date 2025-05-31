@@ -2,10 +2,9 @@ const Campaign = require('../models/campaignModel');
 const mongoose = require('mongoose');
 const Plot = require('../models/plotModel');
 
-// Controller for Campaign
 const campaignController = {
 
-  // Get active campaigns for user
+  // Obtener campañas activas del usuario
   getActiveCampaigns: async (req, res) => {
     try {
       const campaigns = await Campaign.find({ user: req.user.id, is_active: true });
@@ -16,7 +15,7 @@ const campaignController = {
     }
   },
 
-  // Get past (closed) campaigns for user, paginated
+  // Obtener campañas pasadas (cerradas), paginadas
   getPastCampaigns: async (req, res) => {
     try {
       const userId = req.user.id;
@@ -24,12 +23,10 @@ const campaignController = {
       const limit = 12;
       const skip = (page - 1) * limit;
 
-      // Obtener total de campañas inactivas para este usuario
       const totalPastCampaigns = await Campaign.countDocuments({ user: userId, is_active: false });
 
-      // Obtener campañas inactivas con paginación
       const campaigns = await Campaign.find({ user: userId, is_active: false })
-        .sort({ sowing_date: -1 }) // Podés cambiar el criterio de orden si querés
+        .sort({ sowing_date: -1 })
         .skip(skip)
         .limit(limit);
 
@@ -48,8 +45,7 @@ const campaignController = {
     }
   },
 
-
-  // Create campaign
+  // Crear nueva campaña
   createCampaign: async (req, res) => {
     try {
       const { crop, variant, sowing_date, harvest_date, is_active, plot } = req.body;
@@ -69,19 +65,21 @@ const campaignController = {
         return res.status(404).json({ error: "Plot not found or does not belong to the user" });
       }
 
-      if (!selectedPlot.is_active) {
+      if (!selectedPlot.active) {  // <- CAMBIO AQUÍ
         return res.status(400).json({ error: "Cannot create a campaign on an inactive plot" });
       }
 
       const isCreatingActual = is_active === undefined || is_active === true;
 
       if (isCreatingActual) {
+        // Desactiva campañas anteriores activas
         await Campaign.updateMany(
           { user: userId, plot: plot, is_active: true },
           { $set: { is_active: false } }
         );
       }
 
+      // Crear la nueva campaña
       const newCampaign = new Campaign({
         crop,
         variant,
@@ -93,6 +91,16 @@ const campaignController = {
       });
 
       await newCampaign.save();
+
+      // ACTUALIZAR EL LOTE
+      if (isCreatingActual) {
+        selectedPlot.current_campaign = newCampaign._id;
+      } else {
+        selectedPlot.past_campaigns.push(newCampaign._id);
+      }
+
+      await selectedPlot.save(); // <- CAMBIO AQUÍ
+
       res.status(201).json(newCampaign);
 
     } catch (error) {
@@ -101,7 +109,7 @@ const campaignController = {
     }
   },
 
-  // Update campaign
+  // Actualizar campaña
   updateCampaign: async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -116,7 +124,7 @@ const campaignController = {
         return res.status(404).json({ message: 'Campaign not found' });
       }
 
-      // Check if user is trying to change the plot and if the new one is valid and active
+      // Validación del nuevo lote si se quiere cambiar
       if (updates.plot) {
         if (!mongoose.Types.ObjectId.isValid(updates.plot)) {
           return res.status(400).json({ message: 'Invalid plot ID' });
@@ -127,7 +135,7 @@ const campaignController = {
           return res.status(404).json({ message: 'Plot not found or does not belong to the user' });
         }
 
-        if (!selectedPlot.is_active) {
+        if (!selectedPlot.active) { // <- CAMBIO AQUÍ
           return res.status(400).json({ message: 'Cannot assign an inactive plot to a campaign' });
         }
       }
@@ -154,7 +162,7 @@ const campaignController = {
     }
   },
 
-  // Delete campaign
+  // Eliminar campaña
   deleteCampaign: async (req, res) => {
     try {
       const campaignId = req.params.id;
@@ -169,17 +177,15 @@ const campaignController = {
       });
 
       if (!campaign) {
-        console.warn(`⚠️ Campaign with ID ${campaignId} not found or not owned by user`);
         return res.status(404).json({ message: 'Campaign not found' });
       }
 
-      // Verify plot exists and is active
       const plot = await Plot.findOne({ _id: campaign.plot, user: req.user.id });
       if (!plot) {
         return res.status(404).json({ message: 'Associated plot not found or not owned by user' });
       }
 
-      if (!plot.is_active) {
+      if (!plot.active) { // <- CAMBIO AQUÍ
         return res.status(400).json({ message: 'Cannot delete campaign linked to an inactive plot' });
       }
 
