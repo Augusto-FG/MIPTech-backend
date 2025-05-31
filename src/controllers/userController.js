@@ -229,10 +229,10 @@ exports.deactivateMembership = async (req, res) => {
       });
     }
 
-    console.log(`✅ Membresía desactivada correctamente para el usuario con ID: ${userId}`);
+    console.log(`✅ solicitud de desactivación de membresia registrada correctamente para el usuario con ID: ${userId}`);
     return res.status(200).json({
       code: 200,
-      message: 'Membership deactivated successfully',
+      message: 'Membership deactivation request processed successfully',
       user: updatedUser,
     });
 
