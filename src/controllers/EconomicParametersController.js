@@ -226,18 +226,39 @@ exports.getAllParametersByUser = async (req, res) => {
   console.log('Authenticated user ID:', req.user.id);
 
   try {
-    const userParameters = await EconomicParameter.find({ user: req.user.id });
+    const page = parseInt(req.query.page) || 1;
+    const limit = 12;                                     
+    const skip = (page - 1) * limit;    
 
-    if (!userParameters.length) {
+    const totalCount = await EconomicParameter.countDocuments({ user: req.user.id });
+
+    if (totalCount===0) {
       console.log('No parameters found for user:', req.user.id);
       return res.status(404).json({ message: 'No parameters found for this user' });
     }
 
-    console.log('Found parameters count:', userParameters.length);
-    res.status(200).json({
+    const totalPages = Math.ceil(totalCount / limit);
+    if (page > totalPages || page < 1) {
+      return res.status(400).json({
+        message: `Page ${page} out of range. Total pages: ${totalPages}`
+      });
+    }
+
+
+
+    const userParameters = await EconomicParameter.find({ user: req.user.id }).skip(skip).limit(limit);
+    console.log('Found parameters for user:', req.user.id, 'Count:', userParameters.length);
+
+
+    return res.status(200).json({
       message: 'User parameters fetched successfully',
+      current_page: page,
+      total_pages: totalPages,
+      total_count: totalCount,
       parameters: userParameters
     });
+
+
   } catch (error) {
     console.error('Error in getAllParametersByUser:', error);
     res.status(500).json({ message: 'Server error' });
