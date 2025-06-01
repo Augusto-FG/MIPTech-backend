@@ -196,6 +196,28 @@ const campaignController = {
       console.error('❌ Error deleting campaign:', error);
       res.status(500).json({ message: 'Internal server error while deleting campaign' });
     }
+  },
+
+  // Obtener una campaña específica por ID
+  getCampaignById: async (req, res) => {
+    try {
+      const campaignId = req.params.id;
+
+      if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+        return res.status(400).json({ message: 'Invalid campaign ID' });
+      }
+
+      const campaign = await Campaign.findOne({ _id: campaignId, user: req.user.id });
+
+      if (!campaign) {
+        return res.status(404).json({ message: 'Campaign not found or does not belong to the user' });
+      }
+
+      res.status(200).json(campaign);
+    } catch (error) {
+      console.error('❌ Error fetching campaign by ID:', error);
+      res.status(500).json({ message: 'Internal server error while fetching campaign' });
+    }
   }
 
 };

@@ -175,7 +175,7 @@ const getUserPlots = async (req, res) => {
 
     // Paginar si es necesario
     const page = parseInt(req.query.page) || 1;
-    const limit = 10;
+    const limit = 12;
     const skip = (page - 1) * limit;
 
     // Obtener todos los lotes del usuario (activos e inactivos)
@@ -194,16 +194,19 @@ const getUserPlots = async (req, res) => {
     const has_inactive_plots = allUserPlots.some(p => !p.active);
 
     res.status(200).json({
-      message: "Active user plots fetched successfully",
-      plots: paginatedActivePlots,
-      current_page: page,
-      total_pages: totalPages,
-      summary: {
-        total_area,
-        plots_with_active_campaign,
-        plots_without_active_campaign,
-        has_inactive_plots
-      }
+    message: "Active user plots fetched successfully",
+    plots: paginatedActivePlots.map(plot => ({
+      ...plot.toObject(),
+      past_campaigns: plot.past_campaigns || []
+    })),
+    current_page: page,
+    total_pages: totalPages,
+    summary: {
+      total_area,
+      plots_with_active_campaign,
+      plots_without_active_campaign,
+      has_inactive_plots
+  }
     });
 
   } catch (error) {
@@ -270,6 +273,34 @@ const reactivatePlot = async (req, res) => {
   }
 };
 
+const getPlotById = async (req, res) => {
+  const plotId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    const plot = await Plot.findOne({ _id: plotId, user: userId });
+
+    if (!plot) {
+      return res.status(404).json({ message: "Plot not found or not authorized" });
+    }
+
+    // Solo devolvés los IDs (mongoose ya guarda los ObjectId)
+    const previousCampaignsIds = plot.previous_campaigns || [];
+
+    res.status(200).json({
+      message: "Plot fetched successfully",
+      plot: {
+        ...plot.toObject(), // convierte el documento en un objeto plano
+        previous_campaigns: previousCampaignsIds
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error fetching plot by ID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 module.exports = {
   createPlot,
   getUserPlots,
@@ -277,5 +308,6 @@ module.exports = {
   deletePlot,
   getPlotCountByUser,
   deactivatePlot,
-  reactivatePlot
+  reactivatePlot,
+  getPlotById
 };
