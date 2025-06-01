@@ -58,4 +58,21 @@ async function runMembershipChecks() {
             console.error('Error expiring user', user._id, err);
         }
     } 
+
+const toClean = await UserModel.find({ needsCleanup: true });
+  for (const user of toClean) {
+    try {
+      const activeCount = await PlotModel.countDocuments({ user: user._id, active: true });
+      if (activeCount <= 8) {
+        // Quitamos el flag
+        user.needsCleanup = false;
+
+        await user.save();
+        console.log(`  ✅ needsCleanup removido para user:${user._id} (ahora ${activeCount} plots activos)`);
+      }
+    } catch (err) {
+      console.error('Error limpiando needsCleanup para user', user._id, err);
+    }
+  }
+
 } 
