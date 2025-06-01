@@ -4,27 +4,45 @@ const { connectToDatabase } = require("../database/database.js");
 
 async function run() {
   try {
-    // Conectamos a la BD
+    // 1) Conectamos a la BD
     await connectToDatabase();
-    console.log('🔗 Conectado a MongoDB desde el script de migración');
+    console.log('🔗 Conectado a MongoDB desde el script de migración (createdAt)');
 
-    // Ejecutamos la actualización de los que no tengan los atributos nuevos.
-    const result = await Plot.updateMany(
-      { active: { $exists: false } },
-      {
-        $set: {
-          active: true,
-          createdAt : null, 
-          updatedAt: null
-        }
+    // 2) Fecha actual como fallback
+    const ahora = new Date();
+
+    // 3) Buscamos todos los documentos de Plot que no tengan `createdAt`
+    //    y les asignamos:
+    //      createdAt: si ya tienen `updatedAt`, usamos ese valor;
+    //                 si no, usamos `ahora`.
+    const cursor = Plot.find(
+      { createdAt: { $exists: false } },
+      { _id: 1, updatedAt: 1 }
+    ).cursor();
+
+    let matched = 0;
+    let modified = 0;
+
+    for await (const doc of cursor) {
+      matched++;
+      const newCreatedAt = doc.updatedAt ? doc.updatedAt : ahora;
+
+      const result = await Plot.updateOne(
+        { _id: doc._id },
+        { $set: { createdAt: newCreatedAt } }
+      );
+
+      if (result.modifiedCount > 0) {
+        modified++;
+        console.log(`  🛠️  Plot ${doc._id} → createdAt set to ${newCreatedAt.toISOString()}`);
       }
-    );
+    }
 
-    console.log(`✅ Documents matched: ${result.matchedCount}, modified: ${result.modifiedCount}`);
+    console.log(`✅ Total documents without createdAt: ${matched}, actually modified: ${modified}`);
   } catch (err) {
-    console.error('❌ Error en el script de migración:', err);
+    console.error('❌ Error en el script de migración (createdAt):', err);
   } finally {
-    // Cerramos la conexión y terminamos
+    // 4) Cerramos la conexión y terminamos
     mongoose.connection.close();
     process.exit(0);
   }
