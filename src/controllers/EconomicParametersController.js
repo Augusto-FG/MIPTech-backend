@@ -121,24 +121,46 @@ exports.updateParameters = async (req, res) => {
       treatmentEfficiency == undefined ||
       soyState == undefined ||
       percentageForUDE == undefined ||
-      rowSpacing == undefined ||
-      plotID == undefined
-    ) {
+      rowSpacing == undefined) {
       console.log('Missing data for update');
       return res.status(400).json({ message: 'Missing data to update calculation' });
     }
-
-    if (!mongoose.Types.ObjectId.isValid(plotID)) {
-      return res.status(400).json({ message: 'Invalid plotID' });
+    const existing = await EconomicParameter.findOne({ _id: id, user: req.user.id });
+    if (!existing) {
+      console.log('Update failed: not found or unauthorized');
+      return res.status(404).json({ message: 'Calculation not found or unauthorized' });
     }
 
-    const plot = await Plot.findOne({ _id: plotID, user: req.user.id });
-    if (!plot) {
-      return res.status(404).json({ message: 'Plot not found or unauthorized' });
+    //Determinamos el plotID a usar:
+    // si enviaron uno en el body, lo validamos y usamos
+    // si no lo enviaron, ponemos el que ya tenía
+    let newPlotID = existing.plotID; 
+    if (plotID !== undefined) {
+      // Si vino plotID, validamos que sea valido y que pertenezca al user
+      if (!mongoose.Types.ObjectId.isValid(plotID)) {
+        return res.status(400).json({ message: 'Invalid plotID' });
+      }
+      const plot = await Plot.findOne({ _id: plotID, user: req.user.id });
+      if (!plot) {
+        return res.status(404).json({ message: 'Plot not found or unauthorized' });
+      }
+      if (!plot.active) {
+        return res.status(403).json({ message: 'Cannot update parameters of an inactive plot' });
+      }
+      newPlotID = plotID;
+    } else {
+      // Si no vino, nos quedamos con el que ya estaba
+      const plot = await Plot.findOne({ _id: existing.plotID, user: req.user.id });
+      if (!plot) {
+        // Si por alguna razón el plot original ya no existe o no pertenece al user:
+        return res.status(400).json({ message: 'Original plot is no longer available' });
+      }
+      if (!plot.active) {
+        return res.status(403).json({ message: 'Cannot update parameters: associated plot is inactive' });
+      }
     }
-    if (!plot.active) {
-      return res.status(403).json({ message: 'Cannot update parameters of an inactive plot' });
-    }
+
+
 
     const pestConsumption = 110;
     const IAFInfo = {
@@ -165,7 +187,7 @@ exports.updateParameters = async (req, res) => {
     const updated = await EconomicParameter.findOneAndUpdate(
       { _id: id, user: req.user.id },
       {
-        plotID,
+        plotID: newPlotID,
         treatmentCost,
         soybeanValue,
         treatmentEfficiency,
