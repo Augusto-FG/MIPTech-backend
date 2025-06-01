@@ -10,7 +10,12 @@ const plotRoutes = require('./routes/plotRoutes.js');
 const campaignRoutes = require('./routes/campaignRoutes.js');
 const measurementsRoutes = require('./routes/measurementsRoutes.js');
 const chatRoutes = require('./routes/chatRoutes.js');
+<<<<<<< HEAD
 const locationRoutes = require("./routes/locationRoutes");
+=======
+const scheduleMembershipJobs = require('./jobs/checkMemberships.js');
+
+>>>>>>> development
 
 const app = express();
 
@@ -32,7 +37,9 @@ app.use(chatRoutes);
 app.use(locationRoutes);
 
 connectToDatabase().then(() => {
+  scheduleMembershipJobs(); 
   app.listen(PORT, () => {
+  
     console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
     console.log(`
      ╔════════════════════════════════════╗

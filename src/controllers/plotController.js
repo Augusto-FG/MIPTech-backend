@@ -173,48 +173,47 @@ const getUserPlots = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    console.log("📥 Request to fetch user's active plots");
-    console.log("👤 Authenticated user ID:", userId);
-
+    // Paginar si es necesario
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    // Get all plots from user to calculate summary
+    // Obtener todos los lotes del usuario (activos e inactivos)
     const allUserPlots = await Plot.find({ user: userId });
 
-    const active_count = allUserPlots.filter(p => p.active).length;
-    const inactive_count = allUserPlots.filter(p => !p.active).length;
-    const total_area = allUserPlots.reduce((sum, p) => sum + (p.area || 0), 0);
+    // Solo los activos (para retornar en el campo "plots")
+    const activePlots = allUserPlots.filter(p => p.active);
 
-    // Paginate only active plots
-    const user_plots = await Plot.find({ user: userId, active: true })
-      .sort({ provincia: 1, partido_or_department: 1, locality: 1 })
-      .skip(skip)
-      .limit(limit);
+    const paginatedActivePlots = activePlots.slice(skip, skip + limit);
+    const totalPages = Math.ceil(activePlots.length / limit);
 
-    if (!user_plots.length) {
-      console.warn(`⚠️ No active plots found on page ${page} for user ID: ${userId}`);
-      return res.status(404).json({ message: "No active plots found for this page" });
-    }
-
-    console.log(`✅ Found ${user_plots.length} active plots on page ${page} for user`);
+    // Calcular el resumen
+    const total_area = activePlots.reduce((sum, plot) => sum + (plot.surface || 0), 0);
+    const plots_with_active_campaign = activePlots.filter(plot => plot.current_campaign !== null).length;
+    const plots_without_active_campaign = activePlots.length - plots_with_active_campaign;
+    const has_inactive_plots = allUserPlots.some(p => !p.active);
 
     res.status(200).json({
-      message: "Active user plots fetched successfully",
-      plots: user_plots,
-      summary: {
-        active_count,
-        inactive_count,
-        total_area,
-      }
+    message: "Active user plots fetched successfully",
+    plots: paginatedActivePlots.map(plot => ({
+      ...plot.toObject(),
+      past_campaigns: plot.past_campaigns || []
+    })),
+    current_page: page,
+    total_pages: totalPages,
+    summary: {
+      total_area,
+      plots_with_active_campaign,
+      plots_without_active_campaign,
+      has_inactive_plots
+  }
     });
+
   } catch (error) {
-    console.error("❌ Error fetching user's plots:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error fetching user plots:", error);
+    res.status(500).json({ message: "Error fetching user plots" });
   }
 };
-
 
 // Deactivate a plot
 const deactivatePlot = async (req, res) => {
@@ -274,6 +273,34 @@ const reactivatePlot = async (req, res) => {
   }
 };
 
+const getPlotById = async (req, res) => {
+  const plotId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    const plot = await Plot.findOne({ _id: plotId, user: userId });
+
+    if (!plot) {
+      return res.status(404).json({ message: "Plot not found or not authorized" });
+    }
+
+    // Solo devolvés los IDs (mongoose ya guarda los ObjectId)
+    const previousCampaignsIds = plot.previous_campaigns || [];
+
+    res.status(200).json({
+      message: "Plot fetched successfully",
+      plot: {
+        ...plot.toObject(), // convierte el documento en un objeto plano
+        previous_campaigns: previousCampaignsIds
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error fetching plot by ID:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 module.exports = {
   createPlot,
   getUserPlots,
@@ -281,5 +308,6 @@ module.exports = {
   deletePlot,
   getPlotCountByUser,
   deactivatePlot,
-  reactivatePlot
+  reactivatePlot,
+  getPlotById
 };
