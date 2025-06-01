@@ -9,5 +9,6 @@ router.get('/campaigns/past', validateJwt, campaignController.getPastCampaigns);
 router.post('/campaigns', validateJwt, campaignController.createCampaign);
 router.put('/campaigns/:id', validateJwt, campaignController.updateCampaign);
 router.delete('/campaigns/:id', validateJwt, campaignController.deleteCampaign);
+router.get('/campaigns/:id', validateJwt, campaignController.getCampaignById);
 
 module.exports = router;
