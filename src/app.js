@@ -5,13 +5,17 @@ const { connectToDatabase } = require("./database/database.js");
 const { PORT } = require("./constants/index.js");
 const calculateParametersRoutes = require('./routes/calculateParametersRoutes.js');
 const authRoutes = require('./routes/authRoutes.js'); 
+const userRoutes = require('./routes/userRoutes.js');
 const plotRoutes = require('./routes/plotRoutes.js');
 const campaignRoutes = require('./routes/campaignRoutes.js');
 const measurementsRoutes = require('./routes/measurementsRoutes.js');
-const userRoutes = require('./routes/userRoutes.js');
 const chatRoutes = require('./routes/chatRoutes.js');
+<<<<<<< HEAD
+const locationRoutes = require("./routes/locationRoutes");
+=======
 const scheduleMembershipJobs = require('./jobs/checkMemberships.js');
 
+>>>>>>> development
 
 const app = express();
 
@@ -29,7 +33,8 @@ app.use(userRoutes);
 app.use(plotRoutes);
 app.use(campaignRoutes);
 app.use(measurementsRoutes);
-app.use(chatRoutes)
+app.use(chatRoutes);
+app.use(locationRoutes);
 
 connectToDatabase().then(() => {
   scheduleMembershipJobs(); 
