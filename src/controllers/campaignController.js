@@ -47,121 +47,126 @@ const campaignController = {
 
   // Crear nueva campaña
   createCampaign: async (req, res) => {
-    try {
-      const { crop, variant, sowing_date, harvest_date, is_active, plot } = req.body;
+  try {
+    const { crop, variant, sowing_date, harvest_date, is_active, plot } = req.body;
 
-      if (!crop || !variant || !sowing_date || !plot) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
-      const userId = req.user.id;
-
-      if (!mongoose.Types.ObjectId.isValid(plot)) {
-        return res.status(400).json({ error: "Invalid plot ID" });
-      }
-
-      const selectedPlot = await Plot.findOne({ _id: plot, user: userId });
-      if (!selectedPlot) {
-        return res.status(404).json({ error: "Plot not found or does not belong to the user" });
-      }
-
-      if (!selectedPlot.active) {
-        return res.status(400).json({ error: "Cannot create a campaign on an inactive plot" });
-      }
-
-      const isCreatingActual = is_active === undefined || is_active === true;
-
-      if (isCreatingActual) {
-        // Desactiva campañas anteriores activas
-        await Campaign.updateMany(
-          { user: userId, plot: plot, is_active: true },
-          { $set: { is_active: false } }
-        );
-      }
-
-      // Crear la nueva campaña
-      const newCampaign = new Campaign({
-        crop,
-        variant,
-        sowing_date,
-        harvest_date,
-        is_active: is_active ?? true,
-        plot,
-        user: userId
-      });
-
-      await newCampaign.save();
-
-      // ACTUALIZAR EL LOTE
-      if (isCreatingActual) {
-        selectedPlot.current_campaign = newCampaign._id;
-      } else {
-        selectedPlot.previous_campaigns ??= [];
-        selectedPlot.previous_campaigns.push(newCampaign._id);
-      }
-
-      await selectedPlot.save();
-
-      res.status(201).json(newCampaign);
-
-    } catch (error) {
-      console.error("Error creating campaign:", error);
-      res.status(500).json({ error: "Failed to create campaign" });
+    if (!crop || !variant || !sowing_date || !plot) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
-  },
+
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(plot)) {
+      return res.status(400).json({ error: "Invalid plot ID" });
+    }
+
+    const selectedPlot = await Plot.findOne({ _id: plot, user: userId });
+    if (!selectedPlot) {
+      return res.status(404).json({ error: "Plot not found or does not belong to the user" });
+    }
+
+    if (!selectedPlot.active) {
+      return res.status(400).json({ error: "Cannot create a campaign on an inactive plot" });
+    }
+
+    const isCreatingActual = is_active === undefined || is_active === true;
+
+    if (isCreatingActual) {
+      // Desactiva campañas anteriores activas del mismo usuario en este lote
+      await Campaign.updateMany(
+        { user: userId, plot: plot, is_active: true },
+        { $set: { is_active: false } }
+      );
+    }
+
+    // Crear la nueva campaña
+    const newCampaign = new Campaign({
+      crop,
+      variant,
+      sowing_date,
+      harvest_date,
+      is_active: is_active ?? true,
+      plot,
+      user: userId
+    });
+
+    await newCampaign.save();
+
+    // ACTUALIZAR EL LOTE
+    if (isCreatingActual) {
+      if (selectedPlot.current_campaign) {
+        selectedPlot.previous_campaigns ??= [];
+        selectedPlot.previous_campaigns.push(selectedPlot.current_campaign);
+      }
+      selectedPlot.current_campaign = newCampaign._id;
+    } else {
+      selectedPlot.previous_campaigns ??= [];
+      selectedPlot.previous_campaigns.push(newCampaign._id);
+    }
+
+    await selectedPlot.save();
+
+    res.status(201).json(newCampaign);
+
+  } catch (error) {
+    console.error("Error creating campaign:", error);
+    res.status(500).json({ error: "Failed to create campaign" });
+  }
+},
 
   // Actualizar campaña
   updateCampaign: async (req, res) => {
-    try {
-      const campaignId = req.params.id;
-      const updates = req.body;
+  try {
+    const campaignId = req.params.id;
+    const updates = req.body;
 
-      if (!mongoose.Types.ObjectId.isValid(campaignId)) {
-        return res.status(400).json({ message: 'Invalid campaign ID' });
-      }
-
-      const campaign = await Campaign.findOne({ _id: campaignId, user: req.user.id });
-      if (!campaign) {
-        return res.status(404).json({ message: 'Campaign not found' });
-      }
-
-      // Validación del nuevo lote si se quiere cambiar
-      if (updates.plot) {
-        if (!mongoose.Types.ObjectId.isValid(updates.plot)) {
-          return res.status(400).json({ message: 'Invalid plot ID' });
-        }
-
-        const selectedPlot = await Plot.findOne({ _id: updates.plot, user: req.user.id });
-        if (!selectedPlot) {
-          return res.status(404).json({ message: 'Plot not found or does not belong to the user' });
-        }
-
-        if (!selectedPlot.active) {
-          return res.status(400).json({ message: 'Cannot assign an inactive plot to a campaign' });
-        }
-      }
-
-      if (campaign.is_active) {
-        if (updates.sowing_date) {
-          return res.status(400).json({ message: 'Cannot modify sowing_date in active campaigns' });
-        }
-      } else {
-        const allowedFields = ['harvestActual'];
-        const invalidFields = Object.keys(updates).filter(key => !allowedFields.includes(key));
-        if (invalidFields.length > 0) {
-          return res.status(400).json({ message: `Cannot modify ${invalidFields.join(', ')} in past campaigns` });
-        }
-      }
-
-      Object.assign(campaign, updates);
-      const updatedCampaign = await campaign.save();
-
-      res.json(updatedCampaign);
-    } catch (error) {
-      console.error('Error updating campaign:', error);
-      res.status(500).json({ message: 'Failed to update campaign' });
+    if (!mongoose.Types.ObjectId.isValid(campaignId)) {
+      return res.status(400).json({ message: 'Invalid campaign ID' });
     }
-  },
+
+    const campaign = await Campaign.findOne({ _id: campaignId, user: req.user.id });
+    if (!campaign) {
+      return res.status(404).json({ message: 'Campaign not found' });
+    }
+
+    // Validación del nuevo lote si se quiere cambiar
+    if (updates.plot) {
+      if (!mongoose.Types.ObjectId.isValid(updates.plot)) {
+        return res.status(400).json({ message: 'Invalid plot ID' });
+      }
+
+      const selectedPlot = await Plot.findOne({ _id: updates.plot, user: req.user.id });
+      if (!selectedPlot) {
+        return res.status(404).json({ message: 'Plot not found or does not belong to the user' });
+      }
+
+      if (!selectedPlot.active) {
+        return res.status(400).json({ message: 'Cannot assign an inactive plot to a campaign' });
+      }
+    }
+
+    if (campaign.is_active) {
+      if (updates.sowing_date) {
+        return res.status(400).json({ message: 'Cannot modify sowing_date in active campaigns' });
+      }
+    } else {
+      const allowedFields = ['harvestActual'];
+      const invalidFields = Object.keys(updates).filter(key => !allowedFields.includes(key));
+      if (invalidFields.length > 0) {
+        return res.status(400).json({ message: `Cannot modify ${invalidFields.join(', ')} in past campaigns` });
+      }
+    }
+
+    Object.assign(campaign, updates);
+    const updatedCampaign = await campaign.save();
+
+    res.json(updatedCampaign);
+  } catch (error) {
+    console.error('Error updating campaign:', error);
+    res.status(500).json({ message: 'Failed to update campaign' });
+  }
+},
+
 
   // Eliminar campaña
   deleteCampaign: async (req, res) => {
