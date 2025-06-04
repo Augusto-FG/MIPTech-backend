@@ -47,68 +47,72 @@ const campaignController = {
 
   // Crear nueva campaña
   createCampaign: async (req, res) => {
-    try {
-      const { crop, variant, sowing_date, harvest_date, is_active, plot } = req.body;
+  try {
+    const { crop, variant, sowing_date, harvest_date, is_active, plot } = req.body;
 
-      if (!crop || !variant || !sowing_date || !plot) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
-      const userId = req.user.id;
-
-      if (!mongoose.Types.ObjectId.isValid(plot)) {
-        return res.status(400).json({ error: "Invalid plot ID" });
-      }
-
-      const selectedPlot = await Plot.findOne({ _id: plot, user: userId });
-      if (!selectedPlot) {
-        return res.status(404).json({ error: "Plot not found or does not belong to the user" });
-      }
-
-      if (!selectedPlot.active) {
-        return res.status(400).json({ error: "Cannot create a campaign on an inactive plot" });
-      }
-
-      const isCreatingActual = is_active === undefined || is_active === true;
-
-      if (isCreatingActual) {
-        // Desactiva campañas anteriores activas
-        await Campaign.updateMany(
-          { user: userId, plot: plot, is_active: true },
-          { $set: { is_active: false } }
-        );
-      }
-
-      // Crear la nueva campaña
-      const newCampaign = new Campaign({
-        crop,
-        variant,
-        sowing_date,
-        harvest_date,
-        is_active: is_active ?? true,
-        plot,
-        user: userId
-      });
-
-      await newCampaign.save();
-
-      // ACTUALIZAR EL LOTE
-      if (isCreatingActual) {
-        selectedPlot.current_campaign = newCampaign._id;
-      } else {
-        selectedPlot.previous_campaigns ??= [];
-        selectedPlot.previous_campaigns.push(newCampaign._id);
-      }
-
-      await selectedPlot.save();
-
-      res.status(201).json(newCampaign);
-
-    } catch (error) {
-      console.error("Error creating campaign:", error);
-      res.status(500).json({ error: "Failed to create campaign" });
+    if (!crop || !variant || !sowing_date || !plot) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
-  },
+
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(plot)) {
+      return res.status(400).json({ error: "Invalid plot ID" });
+    }
+
+    const selectedPlot = await Plot.findOne({ _id: plot, user: userId });
+    if (!selectedPlot) {
+      return res.status(404).json({ error: "Plot not found or does not belong to the user" });
+    }
+
+    if (!selectedPlot.active) {
+      return res.status(400).json({ error: "Cannot create a campaign on an inactive plot" });
+    }
+
+    const isCreatingActual = is_active === undefined || is_active === true;
+
+    if (isCreatingActual) {
+      // Desactiva campañas anteriores activas del mismo usuario en este lote
+      await Campaign.updateMany(
+        { user: userId, plot: plot, is_active: true },
+        { $set: { is_active: false } }
+      );
+    }
+
+    // Crear la nueva campaña
+    const newCampaign = new Campaign({
+      crop,
+      variant,
+      sowing_date,
+      harvest_date,
+      is_active: is_active ?? true,
+      plot,
+      user: userId
+    });
+
+    await newCampaign.save();
+
+    // ACTUALIZAR EL LOTE
+    if (isCreatingActual) {
+      if (selectedPlot.current_campaign) {
+        selectedPlot.previous_campaigns ??= [];
+        selectedPlot.previous_campaigns.push(selectedPlot.current_campaign);
+      }
+      selectedPlot.current_campaign = newCampaign._id;
+    } else {
+      selectedPlot.previous_campaigns ??= [];
+      selectedPlot.previous_campaigns.push(newCampaign._id);
+    }
+
+    await selectedPlot.save();
+
+    res.status(201).json(newCampaign);
+
+  } catch (error) {
+    console.error("Error creating campaign:", error);
+    res.status(500).json({ error: "Failed to create campaign" });
+  }
+},
 
   // Actualizar campaña
   updateCampaign: async (req, res) => {
@@ -151,7 +155,6 @@ const campaignController = {
     res.status(500).json({ message: 'Failed to update campaign' });
   }
 },
-
   // Eliminar campaña
   deleteCampaign: async (req, res) => {
     try {
