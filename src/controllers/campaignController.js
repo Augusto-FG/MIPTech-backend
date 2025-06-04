@@ -145,18 +145,7 @@ const campaignController = {
       }
     }
 
-    if (campaign.is_active) {
-      if (updates.sowing_date) {
-        return res.status(400).json({ message: 'Cannot modify sowing_date in active campaigns' });
-      }
-    } else {
-      const allowedFields = ['harvestActual'];
-      const invalidFields = Object.keys(updates).filter(key => !allowedFields.includes(key));
-      if (invalidFields.length > 0) {
-        return res.status(400).json({ message: `Cannot modify ${invalidFields.join(', ')} in past campaigns` });
-      }
-    }
-
+    // Aplicar actualizaciones sin restricciones
     Object.assign(campaign, updates);
     const updatedCampaign = await campaign.save();
 
@@ -166,8 +155,6 @@ const campaignController = {
     res.status(500).json({ message: 'Failed to update campaign' });
   }
 },
-
-
   // Eliminar campaña
   deleteCampaign: async (req, res) => {
     try {
