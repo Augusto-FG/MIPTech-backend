@@ -6,44 +6,97 @@ const campaignController = {
 
   // Obtener campañas activas del usuario
   getActiveCampaigns: async (req, res) => {
-    try {
-      const campaigns = await Campaign.find({ user: req.user.id, is_active: true });
-      res.json(campaigns);
-    } catch (error) {
-      console.error('Error fetching active campaigns:', error);
-      res.status(500).json({ message: 'Error fetching active campaigns' });
+  try {
+    const userId = req.user.id;
+    const { plotId, page = 1 } = req.query;
+
+    const limit = 12;
+    const skip = (parseInt(page) - 1) * limit;
+
+    const filter = { user: userId, is_active: true };
+
+    if (plotId) {
+      if (!mongoose.Types.ObjectId.isValid(plotId)) {
+        return res.status(400).json({ message: 'Invalid plot ID' });
+      }
+      filter.plot = plotId;
+
+      const campaign = await Campaign.findOne(filter);
+      if (!campaign) {
+        return res.status(404).json({ message: 'No active campaign found for this plot' });
+      }
+      return res.json(campaign); // Devolver un único objeto si hay plotId
     }
-  },
+
+    const total = await Campaign.countDocuments(filter);
+    const campaigns = await Campaign.find(filter)
+      .sort({ sowing_date: -1 }) // orden opcional
+      .skip(skip)
+      .limit(limit);
+
+    if (!campaigns.length) {
+      return res.status(404).json({ message: 'No active campaigns found for this page' });
+    }
+
+    res.status(200).json({
+      message: 'Active campaigns fetched successfully',
+      total,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(total / limit),
+      campaigns
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching active campaigns:', error);
+    res.status(500).json({ message: 'Error fetching active campaigns' });
+  }
+},
+
 
   // Obtener campañas pasadas (cerradas), paginadas
   getPastCampaigns: async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const page = parseInt(req.query.page) || 1;
-      const limit = 12;
-      const skip = (page - 1) * limit;
+  try {
+    const userId = req.user.id;
+    const { plotId, page = 1 } = req.query;
 
-      const totalPastCampaigns = await Campaign.countDocuments({ user: userId, is_active: false });
+    const limit = 12;
+    const skip = (parseInt(page) - 1) * limit;
 
-      const campaigns = await Campaign.find({ user: userId, is_active: false })
-        .sort({ sowing_date: -1 })
-        .skip(skip)
-        .limit(limit);
+    const filter = { is_active: false };
 
-      if (!campaigns.length) {
-        return res.status(404).json({ message: "No past campaigns found for this page" });
+    // Filtrar por plotId o userId
+    if (plotId) {
+      if (!mongoose.Types.ObjectId.isValid(plotId)) {
+        return res.status(400).json({ message: 'Invalid plot ID' });
       }
-
-      res.status(200).json({
-        message: "Past campaigns fetched successfully",
-        campaigns
-      });
-
-    } catch (error) {
-      console.error('❌ Error fetching past campaigns:', error);
-      res.status(500).json({ message: 'Error fetching past campaigns' });
+      filter.plot = plotId;
+    } else {
+      filter.user = userId;
     }
-  },
+
+    const total = await Campaign.countDocuments(filter);
+    const campaigns = await Campaign.find(filter)
+      .sort({ sowing_date: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    if (!campaigns.length) {
+      return res.status(404).json({ message: 'No past campaigns found for this page' });
+    }
+
+    res.status(200).json({
+      message: 'Past campaigns fetched successfully',
+      total,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(total / limit),
+      campaigns
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching past campaigns:', error);
+    res.status(500).json({ message: 'Error fetching past campaigns' });
+  }
+},
 
   // Crear nueva campaña
   createCampaign: async (req, res) => {
