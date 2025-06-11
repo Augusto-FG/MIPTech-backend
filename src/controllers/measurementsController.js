@@ -1,14 +1,17 @@
 const Measurement = require("../models/measurementsModel");
 const Campaign = require("../models/campaignModel");
 const Plot = require("../models/plotModel");
+const Notification = require("../models/pestNotificationModel");
+
 
 // Crear una nueva medición
 const createMeasurement = async (req, res) => {
   try {
     const { date, pestType, pestDensity, unit, campaign } = req.body;
     const user = req.user.id;
-
-
+    const notifyNearbyProducers = 
+      req.body.notifyNearbyProducers === true ||
+      req.body.notifyNearbyProducers === 'true';
     // Validación de campos obligatorios
     if (!date || !pestType || !pestDensity || !unit || !campaign) { 
       console.log("❌ Faltan campos obligatorios");
@@ -49,21 +52,47 @@ const createMeasurement = async (req, res) => {
     ) {
       return res.status(400).json({ message: "Fecha fuera de los límites permitidos" });
     }
+    // Comprobamos si corresponde notificar a productores
+      if (notifyNearbyProducers) {
+        const nearbyPlots = await Plot.find({
+          partido_or_department: campaignData.plot.partido_or_department, //Búsqueda de lotes en el mismo partido.
+          active: true,
+        });
 
+        const notifiedUsers = new Set(); //usamos un set ya que si el mismo usuario
+        // tiene más de un lote en el partido, buscamos enviarle una sola notificación.
+        for (const plot of nearbyPlots) {
+          notifiedUsers.add(plot.user.toString());
+        }
+
+        for (const userId of notifiedUsers) {
+          await Notification.create({
+            notifiedUser: userId,
+            title: "Alerta de plaga cercana",
+            message: `¡Alerta! Se reportó la presencia de ${pestType} en un lote cercano en este partido (${campaignData.plot.partido_or_department}).`,
+            pestType,
+            pestDensity,
+            densityUnit: unit,
+            date: measurementDate,
+            partido_or_department: campaignData.plot.partido_or_department
+          });
+        }
+      }
     const newMeasurement = new Measurement({
       date: measurementDate,
       pestType,
       pestDensity,
       unit,
       campaign,
-      user
+      user,
+      notifyNearbyProducers
     });
 
     const savedMeasurement = await newMeasurement.save();
     console.log("✅ Medición guardada correctamente");
 
     res.status(201).json(savedMeasurement);
-  } catch (error) {
+    } catch (error) {
     console.error("❌ Error al guardar medición:", error);
     res.status(500).json({ message: "Error al guardar la medición" });
   }
@@ -145,8 +174,123 @@ const deleteMeasurement = async (req, res) => {
   }
 };
 
+// Actualizar una medición
+const updateMeasurement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, pestType, pestDensity, unit, campaign } = req.body;
+    const user = req.user.id;
+    const notifyNearbyProducers = 
+      req.body.notifyNearbyProducers === true ||
+      req.body.notifyNearbyProducers === 'true';
+
+    // Validación de campos obligatorios
+    if (!date || !pestType || !pestDensity || !unit || !campaign) {
+      console.log("❌ Faltan campos obligatorios");
+      return res.status(400).json({ message: "Faltan campos obligatorios" });
+    }
+
+    // Validar unidad
+    const validUnits = ["insecto/metro lineal", "insecto/foliolo", "insecto/hoja"];
+    if (!validUnits.includes(unit)) {
+      console.log("❌ Unidad no válida");
+      return res.status(400).json({ message: "Unidad no válida" });
+    }
+
+    // Validar densidad
+    if (pestDensity <= 0) {
+      console.log("❌ Densidad debe ser mayor a 0");
+      return res.status(400).json({ message: "La densidad debe ser mayor a 0" });
+    }
+
+    // Buscar la medición
+    const measurement = await Measurement.findById(id).populate({
+      path: 'campaign',
+      populate: { path: 'plot' }
+    });
+    if (!measurement) {
+      return res.status(404).json({ message: "Medición no encontrada" });
+    }
+    // Validar que el usuario que intenta modificarlo sea el mismo que la creo.
+    if (measurement.user.toString() !== user) {
+      console.log("🚫 Usuario no autorizado para modificar esta medición");
+      return res.status(403).json({ message: "No autorizado para modificar esta medición" });
+    }
+
+    // Validar que la campaña y el plot existan y estén activos
+    const campaignData = measurement.campaign;
+    if (!campaignData) {
+      return res.status(404).json({ message: "Campaña no encontrada" });
+    }
+    if (!campaignData.plot || campaignData.plot.active === false) {
+      return res.status(403).json({ message: "No se pueden actualizar mediciones para un lote inactivo" });
+    }
+
+    // Validar fecha
+    const measurementDate = new Date(date);
+    const currentDate = new Date();
+    if (
+      measurementDate < campaignData.sowing_date ||
+      measurementDate > currentDate ||
+      measurementDate > campaignData.harvest_date
+    ) {
+      return res.status(400).json({ message: "Fecha fuera de los límites permitidos" });
+    }
+
+    // Notificar a productores cercanos si corresponde
+    //Aca nos fijamos en que esté en true notifyNearbyProducers
+    //Pero también en que anteriormente no estuviera en true, ya que en ese caso
+    //ya le habia enviado previamente la notificación (evitamos spam, 
+    //porque si no, si modificaramos el mismo record 50 veces,
+    //le mandariamos 50 notificaciones a cada productor vecino). 
+    if (notifyNearbyProducers && !measurement.notifyNearbyProducers) {
+      const nearbyPlots = await Plot.find({
+        partido_or_department: campaignData.plot.partido_or_department,
+        active: true,
+      });
+
+      const notifiedUsers = new Set();
+      for (const plot of nearbyPlots) {
+        notifiedUsers.add(plot.user.toString());
+      }
+
+      for (const userId of notifiedUsers) {
+        await Notification.create({
+          user: userId,
+          title: "Alerta de plaga cercana",
+          message: `¡Alerta! Se reportó la presencia de ${pestType} en un lote cercano (${campaignData.plot.field_name}).`,
+          pestType,
+          pestDensity,
+          densityUnit: unit,
+          date: measurementDate,
+          partido_or_department: campaignData.plot.partido_or_department
+        });
+      }
+    
+    }
+
+    // Actualizar la medición
+    measurement.date = measurementDate;
+    measurement.pestType = pestType;
+    measurement.pestDensity = pestDensity;
+    measurement.unit = unit;
+    measurement.campaign = campaign;
+    measurement.notifyNearbyProducers = notifyNearbyProducers;
+
+    const updatedMeasurement = await measurement.save();
+    console.log("✅ Medición actualizada correctamente");
+
+    res.status(200).json(updatedMeasurement);
+  } catch (error) {
+    console.error("❌ Error al actualizar la medición:", error);
+    res.status(500).json({ message: "Error al actualizar la medición" });
+  }
+};
+
+
 module.exports = {
   createMeasurement,
   getMeasurementsByCampaign,
-  deleteMeasurement
+  deleteMeasurement,
+  updateMeasurement
 };

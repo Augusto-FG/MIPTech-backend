@@ -12,7 +12,7 @@ const measurementsRoutes = require('./routes/measurementsRoutes.js');
 const chatRoutes = require('./routes/chatRoutes.js');
 const locationRoutes = require("./routes/locationRoutes");
 const scheduleMembershipJobs = require('./jobs/checkMemberships.js');
-
+const pestNotificationRoutes = require('./routes/pestNotificationRoutes.js')
 
 
 const app = express();
@@ -33,6 +33,7 @@ app.use(campaignRoutes);
 app.use(measurementsRoutes);
 app.use(chatRoutes);
 app.use(locationRoutes);
+app.use(pestNotificationRoutes);
 
 connectToDatabase().then(() => {
   scheduleMembershipJobs(); 
