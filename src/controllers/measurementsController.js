@@ -52,32 +52,20 @@ const createMeasurement = async (req, res) => {
     ) {
       return res.status(400).json({ message: "Fecha fuera de los límites permitidos" });
     }
-    // Comprobamos si corresponde notificar a productores
-      if (notifyNearbyProducers) {
-        const nearbyPlots = await Plot.find({
-          partido_or_department: campaignData.plot.partido_or_department, //Búsqueda de lotes en el mismo partido.
-          active: true,
-        });
+    // Comprobamos si corresponde notificar a productores cercanos.
+    if (notifyNearbyProducers) {
+      await Notification.create({
+        title: "Alerta de plaga cercana",
+        message: `¡Atención! Se reportó la presencia de ${pestType} en un lote de tu partido (${campaignData.plot.partido_or_department}).`,
+        pestType,
+        pestDensity,
+        densityUnit: unit,
+        date: new Date(),
+        partido_or_department: campaignData.plot.partido_or_department
+      });
+    }
 
-        const notifiedUsers = new Set(); //usamos un set ya que si el mismo usuario
-        // tiene más de un lote en el partido, buscamos enviarle una sola notificación.
-        for (const plot of nearbyPlots) {
-          notifiedUsers.add(plot.user.toString());
-        }
-
-        for (const userId of notifiedUsers) {
-          await Notification.create({
-            notifiedUser: userId,
-            title: "Alerta de plaga cercana",
-            message: `¡Alerta! Se reportó la presencia de ${pestType} en un lote cercano en este partido (${campaignData.plot.partido_or_department}).`,
-            pestType,
-            pestDensity,
-            densityUnit: unit,
-            date: measurementDate,
-            partido_or_department: campaignData.plot.partido_or_department
-          });
-        }
-      }
+    // Guardar la medición
     const newMeasurement = new Measurement({
       date: measurementDate,
       pestType,
@@ -242,31 +230,17 @@ const updateMeasurement = async (req, res) => {
     //Pero también en que anteriormente no estuviera en true, ya que en ese caso
     //ya le habia enviado previamente la notificación (evitamos spam, 
     //porque si no, si modificaramos el mismo record 50 veces,
-    //le mandariamos 50 notificaciones a cada productor vecino). 
+    //le mandariamos 50 notificaciones a los productores vecinos). 
     if (notifyNearbyProducers && !measurement.notifyNearbyProducers) {
-      const nearbyPlots = await Plot.find({
-        partido_or_department: campaignData.plot.partido_or_department,
-        active: true,
+      await Notification.create({
+        title: "Alerta de plaga cercana",
+        message: `¡Atención! Se reportó la presencia de ${pestType} en un lote de tu partido (${campaignData.plot.partido_or_department}).`,
+        pestType,
+        pestDensity,
+        densityUnit: unit,
+        date: new Date(),
+        partido_or_department: campaignData.plot.partido_or_department
       });
-
-      const notifiedUsers = new Set();
-      for (const plot of nearbyPlots) {
-        notifiedUsers.add(plot.user.toString());
-      }
-
-      for (const userId of notifiedUsers) {
-        await Notification.create({
-          user: userId,
-          title: "Alerta de plaga cercana",
-          message: `¡Alerta! Se reportó la presencia de ${pestType} en un lote cercano (${campaignData.plot.field_name}).`,
-          pestType,
-          pestDensity,
-          densityUnit: unit,
-          date: measurementDate,
-          partido_or_department: campaignData.plot.partido_or_department
-        });
-      }
-    
     }
 
     // Actualizar la medición

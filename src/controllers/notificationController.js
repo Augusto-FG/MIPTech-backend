@@ -1,6 +1,28 @@
 const Notification = require("../models/pestNotificationModel");
+
+const getUserNotificationsByRegion = async (req, res) => {
+    try {
+      const {partido_or_department} = req.query;
+      if (!partido_or_department) {
+          return res.status(400).json({ message: "'partido_or_department' parameter is missing " });
+      } 
+      //filtramos por usuario y por partido
+      const filter = { 
+          // la expresión regular es para que no diferencia por mayusculas o minusculas
+          partido_or_department: {
+              $regex: new RegExp(partido_or_department, "i")  // Elimina ^ y $ para buscar en cualquier parte
+            }
+          }
+      const notifications = await Notification.find(filter).sort({ date: -1 }).limit(12);
+      console.log('Notifications fetched correctly')
+      res.status(200).json(notifications);
+    } catch (error) {
+      console.error("❌ Error fetching notifications:", error);
+      res.status(500).json({ message: "Error fetching notifications" });
+    }
+  };
+
 /* Esta al final no será usada por como el front estructuró las notificaciones.
-// Para marcar la notificación como leída.
 const markNotificationAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -28,32 +50,7 @@ const markNotificationAsRead = async (req, res) => {
 };
 
 */
-const getUserNotificationsByRegion = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const {partido_or_department} = req.query;
-    if (!partido_or_department) {
-        return res.status(400).json({ message: "El parámetro 'partido_or_department' es obligatorio" });
-    } 
-    //filtramos por usuario y por partido
-    const filter = { 
-        notifiedUser: userId, 
-        //para que no diferencia por mayusculas o minusculas
-        partido_or_department: {
-            $regex: new RegExp(partido_or_department, "i")  // Elimina ^ y $ para buscar en cualquier parte
-          }
-        }
-    
-     
-    
 
-    const notifications = await Notification.find(filter).sort({ date: -1 }).limit(12);
-    res.status(200).json(notifications);
-  } catch (error) {
-    console.error("❌ Error al obtener notificaciones:", error);
-    res.status(500).json({ message: "Error al obtener notificaciones" });
-  }
-};
 /* Esta al final no será usada por como el front estructuró las notificaciones.
 
 const deleteNotification = async (req, res) => {
