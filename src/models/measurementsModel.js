@@ -4,6 +4,10 @@ const measurementSchema = new mongoose.Schema({
   date: { type: Date, required: true },
   pestType: { type: String, required: true },
   pestDensity: { type: Number, required: true },
+  notifyNearbyProducers: {
+    type: Boolean,
+    default: false
+  },
   unit: {
     type: String,
     required: true,
