@@ -1,11 +1,6 @@
 const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({
-  notifiedUser: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
   title: {
     type: String,
     required: true
@@ -32,7 +27,9 @@ const notificationSchema = new mongoose.Schema({
   },
   partido_or_department: {
     type: String,
-    required: true
+    required: true,
+    index:true
+    //Al indexar en MongoDB puede realizar consultas más rápidas sobre este atributo (que es el que se usa después para filtrar).
   }
   
 
