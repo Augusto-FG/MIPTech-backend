@@ -19,18 +19,28 @@ const campaignController = {
       if (!mongoose.Types.ObjectId.isValid(plotId)) {
         return res.status(400).json({ message: 'Invalid plot ID' });
       }
+
+      // Validamos que el plot pertenezca al usuario
+      const plot = await Plot.findOne({ _id: plotId, user: userId });
+      if (!plot) {
+        return res.status(404).json({ message: 'Plot not found or not authorized' });
+      }
+
       filter.plot = plotId;
 
+      // Buscamos si hay una campaña activa en ese lote
       const campaign = await Campaign.findOne(filter);
       if (!campaign) {
         return res.status(404).json({ message: 'No active campaign found for this plot' });
       }
-      return res.json(campaign); // Devolver un único objeto si hay plotId
+
+      return res.json(campaign); // Devolvemos solo el objeto
     }
 
+    // Si no vino plotId, devolvemos paginado
     const total = await Campaign.countDocuments(filter);
     const campaigns = await Campaign.find(filter)
-      .sort({ sowing_date: -1 }) // orden opcional
+      .sort({ sowing_date: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -52,7 +62,6 @@ const campaignController = {
   }
 },
 
-
   // Obtener campañas pasadas (cerradas), paginadas
   getPastCampaigns: async (req, res) => {
   try {
@@ -62,16 +71,20 @@ const campaignController = {
     const limit = 12;
     const skip = (parseInt(page) - 1) * limit;
 
-    const filter = { is_active: false };
+    const filter = { user: userId, is_active: false }; // Siempre filtra por el usuario autenticado
 
-    // Filtrar por plotId o userId
+    // Si viene el plotId, validamos que ese plot pertenezca al usuario
     if (plotId) {
       if (!mongoose.Types.ObjectId.isValid(plotId)) {
         return res.status(400).json({ message: 'Invalid plot ID' });
       }
+
+      const plot = await Plot.findOne({ _id: plotId, user: userId });
+      if (!plot) {
+        return res.status(404).json({ message: 'Plot not found or not authorized' });
+      }
+
       filter.plot = plotId;
-    } else {
-      filter.user = userId;
     }
 
     const total = await Campaign.countDocuments(filter);
@@ -236,6 +249,12 @@ const campaignController = {
       }
 
       await campaign.deleteOne();
+
+      // Si es campaña pasada, eliminar la referencia en el Plot
+      if (plot) {
+      plot.previous_campaigns = plot.previous_campaigns.filter(cId => cId.toString() !== campaign._id.toString());
+      await plot.save();
+      }
       res.json({ message: 'Campaign deleted successfully' });
     } catch (error) {
       console.error('❌ Error deleting campaign:', error);
