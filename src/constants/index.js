@@ -7,5 +7,8 @@ module.exports = {
 
   // Autenticación para usar con Nodemailer:
   EMAIL_USER: process.env.EMAIL_USER || "neobytear@gmail.com",
-  EMAIL_PASS: process.env.EMAIL_PASS || "ctzkvpvgnjbqyonc"
+  EMAIL_PASS: process.env.EMAIL_PASS || "ctzkvpvgnjbqyonc",
+
+  MERCADO_PAGO_ACCESS_TOKEN: process.env.MERCADO_PAGO_ACCESS_TOKEN ||"APP_USR-6532587248250647-061120-3f1aa54dd162635bc09b3a7985d8c83a-2492370502"
+
 };

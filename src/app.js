@@ -12,6 +12,9 @@ const measurementsRoutes = require('./routes/measurementsRoutes.js');
 const chatRoutes = require('./routes/chatRoutes.js');
 const locationRoutes = require("./routes/locationRoutes");
 const scheduleMembershipJobs = require('./jobs/checkMemberships.js');
+const mercadoPagoRoutes = require('./routes/mercadoPagoRoutes.js');
+const pagoController = require("./controllers/pagoController");
+
 
 
 
@@ -33,6 +36,9 @@ app.use(campaignRoutes);
 app.use(measurementsRoutes);
 app.use(chatRoutes);
 app.use(locationRoutes);
+app.use(mercadoPagoRoutes);
+app.post("/pago", pagoController.webhook);
+app.get("/payment-status/:orderId", pagoController.getPaymentStatus);
 
 connectToDatabase().then(() => {
   scheduleMembershipJobs(); 
