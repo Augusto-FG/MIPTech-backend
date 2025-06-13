@@ -32,9 +32,10 @@ const createMeasurement = async (req, res) => {
     }
     
     // Buscamos la campaña y populamos el plot
-    const campaignData = await Campaign.findById(campaign).populate("plot");
+    const campaignData = await Campaign.findOne({ _id: campaign, user }).populate("plot");
     if (!campaignData) {
-      return res.status(404).json({ message: "Campaña no encontrada" });
+      console.log("🚫 Campaña no encontrada o no pertenece al usuario");
+      return res.status(403).json({ message: "No se encontró la campaña o no está autorizado para registrar mediciones en esta campaña" });
     }
 
     // Validar que el plot asociado esté activo
@@ -52,6 +53,22 @@ const createMeasurement = async (req, res) => {
     ) {
       return res.status(400).json({ message: "Fecha fuera de los límites permitidos" });
     }
+
+    // Verificar si ya existe una medición con exactamente los mismos datos
+    const existingMeasurement = await Measurement.findOne({
+      date: measurementDate,
+      pestType,
+      pestDensity,
+      unit,
+      campaign,
+      user
+    });
+
+    if (existingMeasurement) {
+      console.log("❌ Ya existe una medición con los mismos datos");
+      return res.status(409).json({ message: "Ya existe una medición con los mismos datos" });
+    }
+
     // Comprobamos si corresponde notificar a productores cercanos.
     if (notifyNearbyProducers) {
       await Notification.create({
@@ -89,12 +106,23 @@ const createMeasurement = async (req, res) => {
 // Obtener todas las mediciones de una campaña especifica
 const getMeasurementsByCampaign = async (req, res) => {
   try {
+
     const { campaignId } = req.params;
+    const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    console.log(`🔎 Buscando mediciones para la campaña: ${campaignId}, página ${page}`);
+    //  Validar que la campaña exista y pertenezca al usuario autenticado
+    const campaign = await Campaign.findById(campaignId);
+    if (!campaign) {
+      return res.status(404).json({ message: "Campaña no encontrada" });
+    }
+
+    if (campaign.user.toString() !== userId) {
+      console.log("🚫 Usuario no autorizado para ver mediciones de esta campaña");
+      return res.status(403).json({ message: "No autorizado para ver mediciones de esta campaña" });
+    }
 
     // Contar total de mediciones para la campaña (para paginación)
     const totalMeasurements = await Measurement.countDocuments({ campaign: campaignId });
@@ -134,8 +162,7 @@ const getMeasurementsByCampaign = async (req, res) => {
 const deleteMeasurement = async (req, res) => {
   try {
     const { measurementId } = req.params;
-
-    console.log(`🗑️ Attempting to delete measurement with ID: ${measurementId}`);
+    const userId = req.user.id;
 
     const measurement = await Measurement.findById(measurementId).populate({
       path: "campaign",
@@ -145,6 +172,12 @@ const deleteMeasurement = async (req, res) => {
     if (!measurement) {
       console.log("❌ Measurement not found");
       return res.status(404).json({ message: "Measurement not found" });
+    }
+
+    // Validación de que el usuario sea el creador de la medición
+    if (measurement.user.toString() !== userId) {
+      console.log("🚫 Usuario no autorizado para eliminar esta medición");
+      return res.status(403).json({ message: "No autorizado para eliminar esta medición" });
     }
 
     if (!measurement.campaign.plot || measurement.campaign.plot.active === false) {
