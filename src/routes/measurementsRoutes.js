@@ -4,7 +4,7 @@ const { validateJwt  } = require("../middlewares/authMiddleware.js");
 const {
   createMeasurement,
   getMeasurementsByCampaign,
-  deleteMeasurement
+  deleteMeasurement,
 } = require("../controllers/measurementsController");
 
 

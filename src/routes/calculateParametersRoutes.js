@@ -7,6 +7,7 @@ router.post   ('/economic-parameters',     validateJwt, controllers.calculatePar
 router.put    ('/economic-parameters/:id', validateJwt, controllers.updateParameters);
 router.get    ('/economic-parameters',     validateJwt, controllers.getAllParametersByUser);
 router.get    ('/economic-parameters/:id', validateJwt, controllers.getParameterById);
+router.get    ('/economic-parameters/plot/:id', validateJwt, controllers.getParametersByPlotId);
 router.delete ('/economic-parameters/:id', validateJwt, controllers.deleteParameter);
 
 module.exports = router;

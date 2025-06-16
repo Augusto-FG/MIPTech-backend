@@ -1,6 +1,8 @@
 const Measurement = require("../models/measurementsModel");
 const Campaign = require("../models/campaignModel");
 const Plot = require("../models/plotModel");
+const mongoose = require("mongoose");
+
 
 // Crear una nueva medición
 const createMeasurement = async (req, res) => {
@@ -69,44 +71,61 @@ const createMeasurement = async (req, res) => {
   }
 };
 
-// Obtener todas las mediciones de una campaña especifica
+
+// Obtener todas las mediciones paginadas de una campaña especifica
 const getMeasurementsByCampaign = async (req, res) => {
   try {
     const { campaignId } = req.params;
-    const page = parseInt(req.query.page) || 1;
-    const limit = 12;
-    const skip = (page - 1) * limit;
+    let measurements = {};
 
-    console.log(`🔎 Buscando mediciones para la campaña: ${campaignId}, página ${page}`);
+    if (req.query.page) {
+      const page = parseInt(req.query.page) || 1;
+      const limit = 4;
+      const skip = (page - 1) * limit;
 
-    // Contar total de mediciones para la campaña (para paginación)
-    const totalMeasurements = await Measurement.countDocuments({ campaign: campaignId });
+      console.log(`🔎 Buscando mediciones para la campaña: ${campaignId}, página ${page}`);
 
-    const measurements = await Measurement.find({ campaign: campaignId })
+      // Contar total de mediciones para la campaña (para paginación)
+      const totalMeasurements = await Measurement.countDocuments({ campaign: campaignId });
+      const totalPages = Math.ceil(totalMeasurements / limit);
+
+      measurements = await Measurement.find({ campaign: campaignId })
       .select("-user") // Evitamos enviar los datos del usuario
       .populate("campaign", "crop variety sowing_date harvest_date")
       .skip(skip)
       .limit(limit);
 
-    if (!measurements || measurements.length === 0) {
-      console.log("⚠️ No se encontraron mediciones para esta campaña");
-      return res.status(404).json({ message: "No se encontraron mediciones para esta campaña" });
-    }
-
-    const totalPages = Math.ceil(totalMeasurements / limit);
-
-    console.log(`✅ Página ${page}: ${measurements.length} mediciones encontradas`);
-
-    res.status(200).json({
-      measurements,
-      pagination: {
-        total: totalMeasurements,
-        page,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
+      if (!measurements || measurements.length === 0) {
+        console.log("⚠️ No se encontraron mediciones para esta campaña");
+        return res.status(404).json({ message: "No se encontraron mediciones para esta campaña" });
       }
-    });
+
+      res.status(200).json({
+        measurements,
+        pagination: {
+          total: totalMeasurements,
+          page,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      });
+    } else {
+      console.log(`🔎 Buscando mediciones para la campaña: ${campaignId}`);
+
+      measurements = await Measurement.find({ campaign: campaignId })
+      .select("-user") // Evitamos enviar los datos del usuario
+      .populate("campaign", "crop variety sowing_date harvest_date");
+    
+      if (!measurements || measurements.length === 0) {
+        console.log("⚠️ No se encontraron mediciones para esta campaña");
+        return res.status(404).json({ message: "No se encontraron mediciones para esta campaña" });
+      }
+
+      console.log(`✅ ${measurements.length} mediciones encontradas`);
+
+      res.status(200).json({ measurements });
+    }
   } catch (error) {
     console.error("❌ Error al obtener mediciones:", error);
     res.status(500).json({ message: "Error al obtener las mediciones" });
