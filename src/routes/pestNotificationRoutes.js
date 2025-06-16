@@ -1,14 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const { validateJwt  } = require("../middlewares/authMiddleware.js");
-const {
-  getUserNotificationsByRegion,
-
-} = require("../controllers/notificationController.js");
+const { getNotificationsByPlot } = require("../controllers/notificationController.js");
 
 
 
-router.get("/pest-notifications", validateJwt, getUserNotificationsByRegion);
+router.get("/pest-notifications/:plotId", validateJwt, getNotificationsByPlot);
 
 
 module.exports = router;

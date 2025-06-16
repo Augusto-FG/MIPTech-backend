@@ -1,84 +1,47 @@
 const Notification = require("../models/pestNotificationModel");
+const Plot = require("../models/plotModel");
 
-const getUserNotificationsByRegion = async (req, res) => {
-    try {
-      const {partido_or_department} = req.query;
-      if (!partido_or_department) {
-          return res.status(400).json({ message: "'partido_or_department' parameter is missing " });
-      } 
-      //filtramos por usuario y por partido
-      const filter = { 
-          // la expresión regular es para que no diferencia por mayusculas o minusculas
-          partido_or_department: {
-              $regex: new RegExp(partido_or_department, "i")  // Elimina ^ y $ para buscar en cualquier parte
-            }
-          }
-      const notifications = await Notification.find(filter).sort({ date: -1 }).limit(12);
-      console.log('Notifications fetched correctly')
-      res.status(200).json(notifications);
-    } catch (error) {
-      console.error("❌ Error fetching notifications:", error);
-      res.status(500).json({ message: "Error fetching notifications" });
-    }
-  };
-
-/* Esta al final no será usada por como el front estructuró las notificaciones.
-const markNotificationAsRead = async (req, res) => {
+const getNotificationsByPlot = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { id } = req.params;
+    const { plotId } = req.params;
 
-    const notification = await Notification.findOne({
-      _id: id,
-      user: userId
-    });
-
-    if (!notification) {
-      console.log("❌ Notificación no encontrada");
-      return res.status(404).json({ message: "Notificación no encontrada" });
+    if (!plotId) {
+      return res.status(400).json({ message: "'plotId' parameter is required as a query parameter." });
     }
 
-    notification.read = true;
-    await notification.save();
+    // Buscamos la región asociada al plot
+    const plot = await Plot.findById(plotId);
+    if (!plot || !plot.partido_or_department) {
+      return res.status(404).json({ message: "Plot not found." });
+    }
 
-    console.log("✅ Notificación marcada como leída");
-    res.status(200).json({ message: "Notificación marcada como leída", notification });
+    if (plot.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: "The requester user is not the user associated to this plot." });
+    }
+    
+    const partido_or_department = plot.partido_or_department;
+
+    // Buscamos las últimas 12 notificaciones de ese partido
+    const filter = {
+      partido_or_department: {
+        $regex: new RegExp(partido_or_department, "i")
+        //esta expresión regular es para que no sea sensible a mayúsculas y minúsculas (por las dudas).
+      }
+    };
+
+    const notifications = await Notification.find(filter)
+      .sort({ date: -1 }) //de la más reciente a la más antigua.
+      .limit(12);
+
+    console.log("Notifications found for this location.");
+    res.status(200).json(notifications);
+
   } catch (error) {
-    console.error("❌ Error al marcar notificación como leída:", error);
-    res.status(500).json({ message: "Error al marcar notificación como leída" });
+    console.error("Error fetching the notifications for this location:", error);
+    res.status(500).json({ message: "Error fetching the notifications for this location." });
   }
 };
 
-*/
-
-/* Esta al final no será usada por como el front estructuró las notificaciones.
-
-const deleteNotification = async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const { id } = req.params;
-  
-      const notification = await Notification.findOne({
-        _id: id,
-        user: userId
-      });
-  
-      if (!notification) {
-        console.log("❌ Notificación no encontrada");
-        return res.status(404).json({ message: "Notificación no encontrada" });
-      }
-  
-      await notification.deleteOne();
-  
-      console.log("✅ Notificación eliminada correctamente");
-      res.status(200).json({ message: "Notificación eliminada correctamente" });
-    } catch (error) {
-      console.error("❌ Error al eliminar la notificación:", error);
-      res.status(500).json({ message: "Error al eliminar la notificación" });
-    }
-  };
-  */
-
 module.exports = {
-  getUserNotificationsByRegion
+  getNotificationsByPlot
 };
