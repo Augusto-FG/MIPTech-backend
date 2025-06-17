@@ -307,3 +307,24 @@ exports.getParameterById = async (req, res) => {
     return res.status(500).json({ message: 'Failed to fetch parameter' });
   }
 };
+
+exports.getParametersByPlotId = async (req, res) => {
+  console.log('>> getParametersByPlotId called');
+  console.log('Params:', req.params);
+
+  try {
+    const { plotID } = req.params;
+    const parameters = await EconomicParameter.find({ plotID: plotID });
+
+    if (!parameters) {
+      console.log('Parameters not found or unauthorized:', id);
+      return res.status(404).json({ message: 'Parameters not found or unauthorized' });
+    }
+
+    console.log('Parameters fetched:', parameters);
+    return res.status(200).json(parameters);
+  } catch (error) {
+    console.error('Error in getParametersByPlotId:', error);
+    return res.status(500).json({ message: 'Failed to fetch parameters' });
+  }
+};
