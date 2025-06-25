@@ -125,6 +125,8 @@ exports.updateParameters = async (req, res) => {
       console.log('Missing data for update');
       return res.status(400).json({ message: 'Missing data to update calculation' });
     }
+    
+
     const existing = await EconomicParameter.findOne({ _id: id, user: req.user.id });
     if (!existing) {
       console.log('Update failed: not found or unauthorized');
@@ -184,8 +186,7 @@ exports.updateParameters = async (req, res) => {
 
     console.log('Updated NDE:', nde.toFixed(2), 'UDE:', ude.toFixed(2));
 
-    const updated = await EconomicParameter.findOneAndUpdate(
-      { _id: id, user: req.user.id },
+    const updatePayload = 
       {
         plotID: newPlotID,
         treatmentCost,
@@ -196,9 +197,17 @@ exports.updateParameters = async (req, res) => {
         rowSpacing,
         nde: parseFloat(nde.toFixed(2)),
         ude: parseFloat(ude.toFixed(2))
-      },
-      { new: true }
-    );
+      }
+    if (req.body.createdAt && !isNaN(Date.parse(req.body.createdAt))) {
+      updatePayload.createdAt = new Date(req.body.createdAt);
+    }
+    
+    const updated = await EconomicParameter.findOneAndUpdate(
+    { _id: id, user: req.user.id },
+    updatePayload,
+    { new: true, timestamps: false }
+  );
+
 
     if (!updated) {
       console.log('Update failed: not found or unauthorized');
