@@ -192,6 +192,8 @@ const getUserPlots = async (req, res) => {
     const plots_with_active_campaign = activePlots.filter(plot => plot.current_campaign !== null).length;
     const plots_without_active_campaign = activePlots.length - plots_with_active_campaign;
     const has_inactive_plots = allUserPlots.some(p => !p.active);
+    const user = await User.findById(userId);
+    const needsCleanup = user?.needsCleanup ?? false;
 
     res.status(200).json({
     message: "Active user plots fetched successfully",
@@ -199,6 +201,7 @@ const getUserPlots = async (req, res) => {
       ...plot.toObject(),
       past_campaigns: plot.past_campaigns || []
     })),
+    needsCleanup,
     current_page: page,
     total_pages: totalPages,
     summary: {
@@ -273,7 +276,6 @@ const reactivatePlot = async (req, res) => {
         console.log(`needsCleanup removido para user:${userId} tras reactivación. Ahora tiene ${activeCount} activos.`);
       }
     }
-
 
     console.log(`✅ Plot with ID ${plotId} was reactivated`);
     res.status(200).json({
