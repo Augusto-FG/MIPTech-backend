@@ -34,7 +34,7 @@ async function runMembershipChecks() {
         }
     } 
 
-    //  Expiración de quienes pidieron baja y aún no llegado su fecha
+    //  Expiración de quienes pidieron baja y ya llegó la fecha de la membresía.
     const toExpire = await UserModel.find({
         hasMembership:        true,
         unsubscribed:         true,
@@ -47,10 +47,15 @@ async function runMembershipChecks() {
             // Lo pasamos a plan free
             user.hasMembership = false;
 
-            // Si tiene >8 plots activos, marcamos needsCleanup
+            // Si tiene >8 plots activos, marcamos needsCleanup y desactivamos todos sus lotes.
             const activeCount = await PlotModel.countDocuments({ user: user._id, active: true });
             if (activeCount > 8) {
                 user.needsCleanup = true;
+                await PlotModel.updateMany(
+                { user: user._id, active: true },
+                { $set: { active: false } }
+                );
+
             }
 
             await user.save();
@@ -59,6 +64,7 @@ async function runMembershipChecks() {
         }
     } 
 
+    /*
 const toClean = await UserModel.find({ needsCleanup: true });
   for (const user of toClean) {
     try {
@@ -73,6 +79,6 @@ const toClean = await UserModel.find({ needsCleanup: true });
     } catch (err) {
       console.error('Error limpiando needsCleanup para user', user._id, err);
     }
-  }
+  }*/
 
 } 
