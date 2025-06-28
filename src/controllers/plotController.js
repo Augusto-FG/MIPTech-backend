@@ -80,10 +80,13 @@ const createPlot = async (req, res) => {
         }
 
         // ✅ Membership and plot limit validation
-        const plotCount = await Plot.countDocuments({ user: userId });
-        console.log(`📊 User currently has ${plotCount} plots`);
+        const activePlotCount = await Plot.countDocuments({
+            user: userId,
+            active: true,
+        });
+        console.log(`📊 User currently has ${activePlotCount} active plots`);
 
-        if (!user.hasMembership && plotCount >= 8) {
+        if (!user.hasMembership && activePlotCount >= 8) {
             console.warn("🚫 Free user reached the limit of 8 plots");
             return res.status(403).json({
                 message:
@@ -194,13 +197,15 @@ const getUserPlots = async (req, res) => {
         const skip = (page - 1) * limit;
 
         // Obtener el filtro de active desde query params
-        const activeFilter = req.query.active !== 'false'; // Por defecto true, solo false si explícitamente se pasa 'false'
+        const activeFilter = req.query.active !== "false"; // Por defecto true, solo false si explícitamente se pasa 'false'
 
         // Obtener todos los lotes del usuario (activos e inactivos)
         const allUserPlots = await Plot.find({ user: userId });
 
         // Filtrar por active según el parámetro recibido
-        const filteredPlots = allUserPlots.filter((p) => p.active === activeFilter);
+        const filteredPlots = allUserPlots.filter(
+            (p) => p.active === activeFilter
+        );
 
         const paginatedPlots = filteredPlots.slice(skip, skip + limit);
         const totalPages = Math.ceil(filteredPlots.length / limit);
@@ -221,7 +226,9 @@ const getUserPlots = async (req, res) => {
         const needsCleanup = user?.needsCleanup ?? false;
 
         res.status(200).json({
-            message: activeFilter ? "Active user plots fetched successfully" : "Inactive user plots fetched successfully",
+            message: activeFilter
+                ? "Active user plots fetched successfully"
+                : "Inactive user plots fetched successfully",
             plots: paginatedPlots.map((plot) => ({
                 ...plot.toObject(),
                 past_campaigns: plot.past_campaigns || [],
