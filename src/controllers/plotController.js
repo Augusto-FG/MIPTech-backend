@@ -193,16 +193,20 @@ const getUserPlots = async (req, res) => {
         const limit = 12;
         const skip = (page - 1) * limit;
 
+        // Obtener el filtro de active desde query params
+        const activeFilter = req.query.active !== 'false'; // Por defecto true, solo false si explícitamente se pasa 'false'
+
         // Obtener todos los lotes del usuario (activos e inactivos)
         const allUserPlots = await Plot.find({ user: userId });
 
-        // Solo los activos (para retornar en el campo "plots")
+        // Filtrar por active según el parámetro recibido
+        const filteredPlots = allUserPlots.filter((p) => p.active === activeFilter);
+
+        const paginatedPlots = filteredPlots.slice(skip, skip + limit);
+        const totalPages = Math.ceil(filteredPlots.length / limit);
+
+        // Calcular el resumen (siempre basado en plots activos)
         const activePlots = allUserPlots.filter((p) => p.active);
-
-        const paginatedActivePlots = activePlots.slice(skip, skip + limit);
-        const totalPages = Math.ceil(activePlots.length / limit);
-
-        // Calcular el resumen
         const total_area = activePlots.reduce(
             (sum, plot) => sum + (plot.surface || 0),
             0
@@ -217,8 +221,8 @@ const getUserPlots = async (req, res) => {
         const needsCleanup = user?.needsCleanup ?? false;
 
         res.status(200).json({
-            message: "Active user plots fetched successfully",
-            plots: paginatedActivePlots.map((plot) => ({
+            message: activeFilter ? "Active user plots fetched successfully" : "Inactive user plots fetched successfully",
+            plots: paginatedPlots.map((plot) => ({
                 ...plot.toObject(),
                 past_campaigns: plot.past_campaigns || [],
             })),

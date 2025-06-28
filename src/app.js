@@ -6,6 +6,7 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const { connectToDatabase } = require("./database/database.js");
 const { PORT, JWT_SECRET } = require("./constants/index.js");
+const User = require("./models/userModel.js");
 const calculateParametersRoutes = require("./routes/calculateParametersRoutes.js");
 const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
@@ -47,9 +48,24 @@ io.use((socket, next) => {
 });
 
 let connectedUsers = new Map();
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
     console.log("Usuario conectado:", socket.user.id);
     connectedUsers.set(socket.user.id, socket);
+
+    try {
+        const user = await User.findById(socket.user.id);
+        if (user && user.needsCleanup) {
+            socket.emit("needsCleanup", {
+                needsCleanup: true,
+            });
+        }
+    } catch (error) {
+        console.error(
+            "Error al verificar needsCleanup para usuario:",
+            socket.user.id,
+            error
+        );
+    }
 
     socket.on("disconnect", () => {
         console.log("Usuario desconectado:", socket.user.id);

@@ -71,7 +71,10 @@ const measurementReminderCheck = async () => {
 
         if (!lastMeasurement) {
             // Verificar si ya existe un recordatorio para este lote en los últimos 7 días
-            if (!(await hasRecentReminder(campaign.user, campaign.plot))) {
+            if (
+                !(await hasRecentReminder(campaign.user, campaign.plot)) &&
+                campaign.plot.active
+            ) {
                 try {
                     const newReminder = new MeasurementReminder({
                         user: campaign.user,
@@ -100,7 +103,10 @@ const measurementReminderCheck = async () => {
         );
 
         if (daysSinceLastMeasurement >= 7) {
-            if (!(await hasRecentReminder(campaign.user, campaign.plot))) {
+            if (
+                !(await hasRecentReminder(campaign.user, campaign.plot)) &&
+                campaign.plot.active
+            ) {
                 try {
                     const newReminder = new MeasurementReminder({
                         user: campaign.user,
@@ -122,4 +128,7 @@ const measurementReminderCheck = async () => {
             }
         }
     }
+    console.log(
+        `📊 Measurement reminder cron completed at ${new Date().toLocaleTimeString()}`
+    );
 };
