@@ -12,6 +12,7 @@ const authRoutes = require("./routes/authRoutes.js");
 const userRoutes = require("./routes/userRoutes.js");
 const plotRoutes = require("./routes/plotRoutes.js");
 const campaignRoutes = require("./routes/campaignRoutes.js");
+const soybeanPestsRoutes = require("./routes/soybeanPestRoutes.js");
 const measurementsRoutes = require("./routes/measurementsRoutes.js");
 const chatRoutes = require("./routes/chatRoutes.js");
 const locationRoutes = require("./routes/locationRoutes");
@@ -94,6 +95,7 @@ app.use(campaignRoutes);
 app.use(measurementsRoutes);
 app.use(chatRoutes);
 app.use(locationRoutes);
+app.use(soybeanPestsRoutes);
 
 app.use(mercadoPagoRoutes);
 app.post("/pago", pagoController.webhook);
