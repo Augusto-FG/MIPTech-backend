@@ -1,12 +1,19 @@
 const Campaign = require("../models/campaignModel");
 const mongoose = require("mongoose");
 const Plot = require("../models/plotModel");
-
+const User = require("../models/userModel");
 const campaignController = {
     // Obtener campañas activas del usuario
     getActiveCampaigns: async (req, res) => {
         try {
             const userId = req.user.id;
+
+            const user = await User.findById(userId); 
+            if (user?.needsCleanup) {                 
+                return res.status(403).json({         
+                    message: "Access denied. Please deactivate some plots before accessing campaigns.",
+                });                                  
+            }
             const { plotId, page = 1 } = req.query;
 
             const limit = 12;
@@ -72,6 +79,13 @@ const campaignController = {
     getPastCampaigns: async (req, res) => {
         try {
             const userId = req.user.id;
+
+            const user = await User.findById(userId); 
+            if (user?.needsCleanup) {                
+            return res.status(403).json({        
+                message: "Access denied. Please deactivate some plots before accessing past campaigns.",
+            });                                   
+            }
             const { plotId, page = 1 } = req.query;
 
             const limit = 12;
