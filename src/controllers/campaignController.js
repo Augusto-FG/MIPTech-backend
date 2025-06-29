@@ -7,6 +7,14 @@ const campaignController = {
     getActiveCampaigns: async (req, res) => {
         try {
             const userId = req.user.id;
+
+            const user = await User.findById(userId);
+            if (user?.needsCleanup) {
+                return res.status(403).json({
+                    message:
+                        "Access denied. Please deactivate some plots before accessing campaigns.",
+                });
+            }
             const { plotId, page = 1 } = req.query;
 
             const limit = 12;
@@ -20,7 +28,11 @@ const campaignController = {
                 }
 
                 // Validamos que el plot pertenezca al usuario
-                const plot = await Plot.findOne({ _id: plotId, user: userId });
+                const plot = await Plot.findOne({
+                    _id: plotId,
+                    user: userId,
+                    active: true,
+                });
                 if (!plot) {
                     return res
                         .status(404)
@@ -72,6 +84,14 @@ const campaignController = {
     getPastCampaigns: async (req, res) => {
         try {
             const userId = req.user.id;
+
+            const user = await User.findById(userId);
+            if (user?.needsCleanup) {
+                return res.status(403).json({
+                    message:
+                        "Access denied. Please deactivate some plots before accessing past campaigns.",
+                });
+            }
             const { plotId, page = 1 } = req.query;
 
             const limit = 12;
@@ -85,7 +105,11 @@ const campaignController = {
                     return res.status(400).json({ message: "Invalid plot ID" });
                 }
 
-                const plot = await Plot.findOne({ _id: plotId, user: userId });
+                const plot = await Plot.findOne({
+                    _id: plotId,
+                    user: userId,
+                    active: true,
+                });
                 if (!plot) {
                     return res
                         .status(404)

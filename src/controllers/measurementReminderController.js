@@ -1,22 +1,69 @@
 const MeasurementReminder = require("../models/measurementReminderModel");
+const mongoose = require("mongoose");
+
+const buildBaseAggregation = (
+    userId,
+    additionalMatchStage = {},
+    includeProjection = false
+) => {
+    const lookupStage = {
+        from: "plots",
+        localField: "plot",
+        foreignField: "_id",
+        as: "plot",
+    };
+
+    if (includeProjection) {
+        lookupStage.pipeline = [
+            { $match: { active: true } },
+            {
+                $project: {
+                    plot_name: 1,
+                    field_name: 1,
+                    active: 1,
+                },
+            },
+        ];
+    }
+
+    return [
+        {
+            $match: {
+                user: mongoose.Types.ObjectId.createFromHexString(userId),
+                ...additionalMatchStage,
+            },
+        },
+        { $lookup: lookupStage },
+        { $unwind: "$plot" },
+        ...(includeProjection ? [] : [{ $match: { "plot.active": true } }]),
+    ];
+};
 
 const getMeasurementReminders = async (req, res) => {
     try {
         const userId = req.user.id;
         const { limit = 12 } = req.query;
-        const reminders = await MeasurementReminder.find({ user: userId })
-            .populate("plot", "plot_name field_name")
-            .sort({ read: 1, createdAt: -1 })
-            .limit(limit);
+        const reminders = await MeasurementReminder.aggregate([
+            ...buildBaseAggregation(userId, {}, true),
+            { $sort: { read: 1, createdAt: -1 } },
+            { $limit: parseInt(limit) },
+        ]);
 
-        const remindersCount = await MeasurementReminder.countDocuments({
-            user: userId,
+        const [remindersCountResult, unreadCountResult] = await Promise.all([
+            MeasurementReminder.aggregate([
+                ...buildBaseAggregation(userId),
+                { $count: "total" },
+            ]),
+            MeasurementReminder.aggregate([
+                ...buildBaseAggregation(userId, { read: false }),
+                { $count: "total" },
+            ]),
+        ]);
+        res.status(200).json({
+            reminders,
+            remindersCount: remindersCountResult[0]?.total || 0,
+            unreadCount: unreadCountResult[0]?.total || 0,
         });
-        const unreadCount = await MeasurementReminder.countDocuments({
-            user: userId,
-            read: false,
-        });
-        res.status(200).json({ reminders, remindersCount, unreadCount });
     } catch (error) {
         console.error("Error fetching measurement reminders:", error);
         res.status(500).json({
