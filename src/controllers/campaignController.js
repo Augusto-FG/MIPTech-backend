@@ -8,11 +8,12 @@ const campaignController = {
         try {
             const userId = req.user.id;
 
-            const user = await User.findById(userId); 
-            if (user?.needsCleanup) {                 
-                return res.status(403).json({         
-                    message: "Access denied. Please deactivate some plots before accessing campaigns.",
-                });                                  
+            const user = await User.findById(userId);
+            if (user?.needsCleanup) {
+                return res.status(403).json({
+                    message:
+                        "Access denied. Please deactivate some plots before accessing campaigns.",
+                });
             }
             const { plotId, page = 1 } = req.query;
 
@@ -27,7 +28,11 @@ const campaignController = {
                 }
 
                 // Validamos que el plot pertenezca al usuario
-                const plot = await Plot.findOne({ _id: plotId, user: userId });
+                const plot = await Plot.findOne({
+                    _id: plotId,
+                    user: userId,
+                    active: true,
+                });
                 if (!plot) {
                     return res
                         .status(404)
@@ -80,11 +85,12 @@ const campaignController = {
         try {
             const userId = req.user.id;
 
-            const user = await User.findById(userId); 
-            if (user?.needsCleanup) {                
-            return res.status(403).json({        
-                message: "Access denied. Please deactivate some plots before accessing past campaigns.",
-            });                                   
+            const user = await User.findById(userId);
+            if (user?.needsCleanup) {
+                return res.status(403).json({
+                    message:
+                        "Access denied. Please deactivate some plots before accessing past campaigns.",
+                });
             }
             const { plotId, page = 1 } = req.query;
 
@@ -99,7 +105,11 @@ const campaignController = {
                     return res.status(400).json({ message: "Invalid plot ID" });
                 }
 
-                const plot = await Plot.findOne({ _id: plotId, user: userId });
+                const plot = await Plot.findOne({
+                    _id: plotId,
+                    user: userId,
+                    active: true,
+                });
                 if (!plot) {
                     return res
                         .status(404)
@@ -288,7 +298,7 @@ const campaignController = {
             });
 
             if (!campaign) {
-            return res.status(404).json({ message: "Campaign not found" });
+                return res.status(404).json({ message: "Campaign not found" });
             }
 
             const plot = await Plot.findOne({
@@ -298,14 +308,15 @@ const campaignController = {
 
             if (!plot) {
                 return res.status(404).json({
-                message: "Associated plot not found or not owned by user",
-            });
+                    message: "Associated plot not found or not owned by user",
+                });
             }
 
             if (!plot.active) {
                 return res.status(400).json({
-                message: "Cannot delete campaign linked to an inactive plot",
-            });
+                    message:
+                        "Cannot delete campaign linked to an inactive plot",
+                });
             }
 
             // Eliminar campaña
@@ -330,11 +341,10 @@ const campaignController = {
         } catch (error) {
             console.error("❌ Error deleting campaign:", error);
             res.status(500).json({
-            message: "Internal server error while deleting campaign",
+                message: "Internal server error while deleting campaign",
             });
         }
     },
-
 
     // Obtener una campaña específica por ID
     getCampaignById: async (req, res) => {
