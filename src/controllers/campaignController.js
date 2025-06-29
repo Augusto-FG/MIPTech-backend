@@ -288,43 +288,53 @@ const campaignController = {
             });
 
             if (!campaign) {
-                return res.status(404).json({ message: "Campaign not found" });
+            return res.status(404).json({ message: "Campaign not found" });
             }
 
             const plot = await Plot.findOne({
                 _id: campaign.plot,
                 user: req.user.id,
             });
+
             if (!plot) {
                 return res.status(404).json({
-                    message: "Associated plot not found or not owned by user",
-                });
+                message: "Associated plot not found or not owned by user",
+            });
             }
 
             if (!plot.active) {
                 return res.status(400).json({
-                    message:
-                        "Cannot delete campaign linked to an inactive plot",
-                });
+                message: "Cannot delete campaign linked to an inactive plot",
+            });
             }
 
+            // Eliminar campaña
             await campaign.deleteOne();
 
-            // Si es campaña pasada, eliminar la referencia en el Plot
-            if (plot) {
-                plot.previous_campaigns = plot.previous_campaigns.filter(
-                    (cId) => cId.toString() !== campaign._id.toString()
-                );
-                await plot.save();
+            // Eliminar referencias del Plot
+            const campaignIdStr = campaign._id.toString();
+
+            // Si era la campaña actual, quitarla
+            if (plot.current_campaign?.toString() === campaignIdStr) {
+                plot.current_campaign = null;
             }
+
+            // Si era una campaña pasada, quitarla del array
+            plot.previous_campaigns = plot.previous_campaigns.filter(
+                (cId) => cId.toString() !== campaignIdStr
+            );
+
+            await plot.save();
+
             res.json({ message: "Campaign deleted successfully" });
         } catch (error) {
             console.error("❌ Error deleting campaign:", error);
             res.status(500).json({
-                message: "Internal server error while deleting campaign",
+            message: "Internal server error while deleting campaign",
             });
         }
     },
+
 
     // Obtener una campaña específica por ID
     getCampaignById: async (req, res) => {
