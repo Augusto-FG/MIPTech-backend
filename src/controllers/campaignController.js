@@ -1,7 +1,7 @@
 const Campaign = require("../models/campaignModel");
 const mongoose = require("mongoose");
 const Plot = require("../models/plotModel");
-
+const User = require("../models/userModel");
 const campaignController = {
     // Obtener campañas activas del usuario
     getActiveCampaigns: async (req, res) => {
@@ -305,6 +305,7 @@ const campaignController = {
                 _id: campaign.plot,
                 user: req.user.id,
             });
+
             if (!plot) {
                 return res.status(404).json({
                     message: "Associated plot not found or not owned by user",
@@ -318,15 +319,24 @@ const campaignController = {
                 });
             }
 
+            // Eliminar campaña
             await campaign.deleteOne();
 
-            // Si es campaña pasada, eliminar la referencia en el Plot
-            if (plot) {
-                plot.previous_campaigns = plot.previous_campaigns.filter(
-                    (cId) => cId.toString() !== campaign._id.toString()
-                );
-                await plot.save();
+            // Eliminar referencias del Plot
+            const campaignIdStr = campaign._id.toString();
+
+            // Si era la campaña actual, quitarla
+            if (plot.current_campaign?.toString() === campaignIdStr) {
+                plot.current_campaign = null;
             }
+
+            // Si era una campaña pasada, quitarla del array
+            plot.previous_campaigns = plot.previous_campaigns.filter(
+                (cId) => cId.toString() !== campaignIdStr
+            );
+
+            await plot.save();
+
             res.json({ message: "Campaign deleted successfully" });
         } catch (error) {
             console.error("❌ Error deleting campaign:", error);
