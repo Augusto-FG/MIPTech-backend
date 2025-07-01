@@ -103,28 +103,35 @@ const measurementReminderCheck = async () => {
         );
 
         if (daysSinceLastMeasurement >= 7) {
-            if (
-                !(await hasRecentReminder(campaign.user, campaign.plot)) &&
-                campaign.plot.active
-            ) {
-                try {
-                    const newReminder = new MeasurementReminder({
-                        user: campaign.user,
-                        plot: campaign.plot,
-                        lastMeasurementDate: lastMeasurementDate,
-                        message: `Hace ${daysSinceLastMeasurement} días que no tomás un registro de plagas para el lote ${campaign.plot.plot_name} del campo ${campaign.plot.field_name}.`,
-                        read: false,
-                    });
-                    await sendNotification(
-                        campaign.user.toString(),
-                        newReminder
-                    );
-                } catch (error) {
-                    console.error(
-                        `Error al crear recordatorio para campaña ${campaign}:`,
-                        error
-                    );
+            try {
+                if (
+                    !(await hasRecentReminder(campaign.user, campaign.plot)) &&
+                    campaign.plot.active
+                ) {
+                    try {
+                        const newReminder = new MeasurementReminder({
+                            user: campaign.user,
+                            plot: campaign.plot,
+                            lastMeasurementDate: lastMeasurementDate,
+                            message: `Hace ${daysSinceLastMeasurement} días que no tomás un registro de plagas para el lote ${campaign.plot.plot_name} del campo ${campaign.plot.field_name}.`,
+                            read: false,
+                        });
+                        await sendNotification(
+                            campaign.user.toString(),
+                            newReminder
+                        );
+                    } catch (error) {
+                        console.error(
+                            `Error al crear recordatorio para campaña ${campaign}:`,
+                            error
+                        );
+                    }
                 }
+            } catch (error) {
+                console.error(
+                    `Error al procesar campaña ${campaign._id}:`,
+                    error
+                );
             }
         }
     }

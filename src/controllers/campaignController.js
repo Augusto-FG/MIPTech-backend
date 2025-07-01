@@ -276,6 +276,18 @@ const campaignController = {
             // Aplicar actualizaciones sin restricciones
             Object.assign(campaign, updates);
             const updatedCampaign = await campaign.save();
+            if (!updatedCampaign.is_active) {
+                const selectedPlot = await Plot.findOne({
+                    _id: updatedCampaign.plot,
+                    user: req.user.id,
+                });
+                if (selectedPlot.current_campaign?.toString() === campaignId) {
+                    selectedPlot.current_campaign = null;
+                    selectedPlot.previous_campaigns ??= [];
+                    selectedPlot.previous_campaigns.push(campaignId);
+                }
+                await selectedPlot.save();
+            }
 
             res.json(updatedCampaign);
         } catch (error) {
