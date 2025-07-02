@@ -384,24 +384,54 @@ exports.getParameterById = async (req, res) => {
 };
 
 exports.getParametersByPlotId = async (req, res) => {
-    console.log(">> getParametersByPlotId called");
-    // console.log("Params:", req.params);
+  console.log('>> getAllParametersByPlotId called');
+  console.log('Params:', req.params);
 
-    try {
-        const { plotID } = req.params;
-        const parameters = await EconomicParameter.find({ plotID: plotID });
+  try {
+    const { id } = req.params;
 
-        if (!parameters) {
-            console.log("Parameters not found or unauthorized:", id);
-            return res
-                .status(404)
-                .json({ message: "Parameters not found or unauthorized" });
-        }
+    if (req.query.page) {
+      const page = parseInt(req.query.page) || 1;
+      const limit = 4;                                     
+      const skip = (page - 1) * limit;    
 
-        // console.log("Parameters fetched:", parameters);
-        return res.status(200).json(parameters);
-    } catch (error) {
-        console.error("Error in getParametersByPlotId:", error);
-        return res.status(500).json({ message: "Failed to fetch parameters" });
+      const totalCount = await EconomicParameter.countDocuments({ plotID: id });
+
+      if (totalCount===0) {
+        console.log('No parameters found for plot:', req.user.id);
+        return res.status(404).json({ message: 'No parameters found for this plot' });
+      }
+
+      const totalPages = Math.ceil(totalCount / limit);
+      if (page > totalPages || page < 1) {
+        return res.status(400).json({
+          message: `Page ${page} out of range. Total pages: ${totalPages}`
+        });
+      }
+
+      const parameters = await EconomicParameter.find({ plotID: id }).skip(skip).limit(limit);
+      console.log('Found parameters for plot:', id, 'Count:', parameters.length);
+
+
+      return res.status(200).json({
+        parameters,
+        pagination: {
+          total: totalCount,
+          page,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      });
+    } else {
+
+      const parameters = await EconomicParameter.find({ plotID: id });
+      console.log('Found parameters for plot:', id, 'Count:', parameters.length);
+
+      return res.status(200).json({ parameters });
     }
+  } catch (error) {
+    console.error('Error in getAllParametersByPlotId:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
